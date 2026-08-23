@@ -63,7 +63,7 @@ class ResourceDetailView(LoginRequiredMixin, DetailView):
         if resource.resource_type == Resource.ResourceType.BOOK:
             context["chapters"] = resource.chapters.prefetch_related("sections")
         else:
-            context["chapters"] = Resource.chapters.none()
+            context["chapters"] = resource.chapters.none()
         context["can_upload"] = user_can_upload(self.request.user)
         return context
 

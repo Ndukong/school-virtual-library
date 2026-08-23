@@ -363,3 +363,19 @@ class AdminChainScopingTests(LibraryTestBase):
         queryset = ResourceAdmin(Resource, admin_site).get_queryset(request)
         titles = set(queryset.values_list("title", flat=True))
         self.assertEqual(titles, {"Mine A"})
+
+class ResourceDetailPageTests(LibraryTestBase):
+    """Every Resource.ResourceType detail page must render (AGENTS section 8).
+    Regression for the class-level Resource.chapters.none() crash."""
+
+    def test_every_resource_type_detail_page_renders(self):
+        for resource_type in Resource.ResourceType.values:
+            with self.subTest(resource_type=resource_type):
+                resource = self.make_resource(
+                    title=f"{resource_type} doc", resource_type=resource_type,
+                )
+                self.client.force_login(self.student_a)
+                response = self.client.get(
+                    reverse("library-detail", args=[resource.public_id])
+                )
+                self.assertEqual(response.status_code, 200)
