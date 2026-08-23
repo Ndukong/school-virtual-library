@@ -56,6 +56,8 @@ INSTALLED_APPS = [
     "teachers",
     "library",
     "documents",
+    "ai",
+    "search",
 ]
 
 # Custom user model. Must remain set before the first migration; changing it
@@ -203,6 +205,25 @@ DOCUMENTS_CHUNK_SIZE = 1200
 DOCUMENTS_CHUNK_OVERLAP = 150
 DOCUMENTS_MAX_ATTEMPTS = 3
 DOCUMENTS_MAX_PAGES = 2000
+
+# AI provider abstraction (AGENTS.md section 13). Provider-specific SDKs are
+# never used outside the ai app. "mock" runs offline with deterministic
+# vectors (tests/dev); "openai_compatible" targets NVIDIA NIM and any router
+# exposing OpenAI-style endpoints; "gemini" uses Google's Generative Language
+# API. Groq serves chat only (no embeddings endpoint) - reserve it for Phase 5.
+AI_PROVIDER = os.getenv("AI_PROVIDER", "mock")
+AI_API_KEY = os.getenv("AI_API_KEY", "")
+AI_BASE_URL = os.getenv("AI_BASE_URL", "")
+AI_EMBEDDING_MODEL = os.getenv("AI_EMBEDDING_MODEL", "mock-embed-small")
+AI_CHAT_MODEL = os.getenv("AI_CHAT_MODEL", "")
+AI_TIMEOUT_SECONDS = int(os.getenv("AI_TIMEOUT_SECONDS", "30"))
+AI_MAX_RETRIES = int(os.getenv("AI_MAX_RETRIES", "2"))
+
+# Search behaviour (Phase 4). Vectors are stored with their model name so a
+# model switch triggers re-embedding instead of mixing vector spaces.
+SEARCH_SEMANTIC_TOP_K = 12
+SEARCH_KEYWORD_TOP_K = 12
+SEARCH_MIN_SIMILARITY = 0.15
 
 
 # Default primary key field type

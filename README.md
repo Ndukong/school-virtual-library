@@ -713,6 +713,35 @@ Established:
   failures marked on the resource immediately
 - Idempotent re-runs (replace strategy) and reprocess command per resource
 
+**Phase 4 — Semantic Search: COMPLETE.**
+
+Established:
+
+- AI provider abstraction (`ai` app): `mock` (offline deterministic vectors),
+  `openai_compatible` (NVIDIA NIM / routers / vLLM via `AI_BASE_URL`),
+  `gemini` - all with timeout, retries, and full usage logging
+  (`AIRequestLog`); keys only via `.env`, nothing hard-coded
+- EMBED step chained into the processing pipeline (CHUNK -> EMBED -> READY)
+  with model-tagged vectors; changing `AI_EMBEDDING_MODEL` re-embeds once
+- Hybrid search: keyword term-ranking fused with semantic cosine ranking
+  (Reciprocal Rank Fusion); graceful keyword-only degradation on provider failure
+- Permission-first retrieval: school scoping + access policies applied BEFORE
+  ranking; scope filters for subject / class / resource type / single book
+- `/search/` results page with snippets, page badges, filters, and header nav
+
+To enable real embeddings locally:
+
+```bash
+# .env (never committed)
+AI_PROVIDER=openai_compatible
+AI_BASE_URL=https://integrate.api.nvidia.com/v1   # NVIDIA NIM example
+AI_API_KEY=nvapi-...
+AI_EMBEDDING_MODEL=nvidia/nv-embedqa-e5-v5
+```
+
+Then re-run pipelines: `python manage.py process_documents --resource-id <uuid>`
+(or re-upload). Groq has no embeddings endpoint - reserve it for Phase 5 chat.
+
 Development commands:
 
 ```bash
@@ -729,9 +758,9 @@ python manage.py test
 python manage.py runserver
 ```
 
-**Recommended next step: Phase 4 — Semantic Search** (embeddings via AI
-provider abstraction, pgvector on PostgreSQL or a dev-friendly fallback,
-hybrid keyword+semantic retrieval, metadata filters).
+**Recommended next step: Phase 5 — AI Librarian** (Ask AI / Ask This Book /
+Ask This Chapter with RAG over retrieved chunks, citations anchored to pages,
+prompt-injection-resistant system prompts).
 
 ---
 

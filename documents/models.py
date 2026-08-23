@@ -66,6 +66,25 @@ class DocumentChunk(TimeStampedModel):
         return f"{self.resource.title} #{self.sequence}: {preview}"
 
 
+class ChunkEmbedding(TimeStampedModel):
+    """Stored embedding vector for one chunk.
+
+    Vectors are stored as JSON with their model name; a model change triggers
+    re-embedding rather than mixing vector spaces. When PostgreSQL/pgvector is
+    deployed this table becomes the pgvector column source of truth.
+    """
+
+    chunk = models.OneToOneField(
+        DocumentChunk, on_delete=models.CASCADE, related_name="embedding"
+    )
+    model_name = models.CharField(max_length=120)
+    dimensions = models.PositiveSmallIntegerField()
+    vector = models.JSONField()
+
+    def __str__(self):
+        return f"{self.chunk} ({self.model_name})"
+
+
 class ProcessingLog(TimeStampedModel):
     """Diagnostic log entries for document processing runs."""
 
@@ -100,6 +119,7 @@ class ProcessingJob(TimeStampedModel):
     class Step(models.TextChoices):
         EXTRACT = "EXTRACT", "Extract text"
         CHUNK = "CHUNK", "Chunk text"
+        EMBED = "EMBED", "Embed chunks"
 
     class Status(models.TextChoices):
         PENDING = "PENDING", "Pending"

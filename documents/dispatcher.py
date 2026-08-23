@@ -78,6 +78,9 @@ def process_job(job):
     job.finished_at = utcnow()
     job.last_error = ""
     job.save(update_fields=["status", "finished_at", "last_error", "updated_at"])
+    # Pipeline chaining: CHUNK completion queues embedding work.
+    if job.step == ProcessingJob.Step.CHUNK:
+        enqueue(job.resource, ProcessingJob.Step.EMBED)
     return job
 
 

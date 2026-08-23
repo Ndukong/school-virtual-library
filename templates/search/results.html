@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Search - School Virtual Library{% endblock %}
+{% block content %}
+  <h1>Search the library</h1>
+  <form method="get" class="filters card">
+    <label for="id_q">Search</label>
+    <input type="search" id="id_q" name="q" value="{{ query }}" placeholder="Ask about any topic...">
+    <label for="id_subject">Subject</label>
+    <select id="id_subject" name="subject">
+      <option value="">All subjects</option>
+      {% for subject in subjects %}
+        <option value="{{ subject.pk }}" {% if current_filters.subject == subject.pk|stringformat:"s" %}selected{% endif %}>{{ subject }}</option>
+      {% endfor %}
+    </select>
+    <label for="id_class">Class</label>
+    <select id="id_class" name="class">
+      <option value="">All classes</option>
+      {% for school_class in classes %}
+        <option value="{{ school_class.pk }}" {% if current_filters.school_class == school_class.pk|stringformat:"s" %}selected{% endif %}>{{ school_class.name }}</option>
+      {% endfor %}
+    </select>
+    <label for="id_type">Type</label>
+    <select id="id_type" name="type">
+      <option value="">All types</option>
+      {% for value, label in resource_types %}
+        <option value="{{ value }}" {% if current_filters.resource_type == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Search</button>
+  </form>
+
+  {% if query %}
+    {% if results %}
+      <p class="subtitle">{{ results|length }} result(s) for &ldquo;{{ query }}&rdquo;</p>
+      <ul class="resource-list">
+        {% for result in results %}
+          <li class="card resource-card">
+            <div class="resource-head">
+              <a class="resource-title" href="{{ result.resource.get_absolute_url }}">{{ result.resource.title }}</a>
+              <span class="badge">
+                {% if result.page_start %}p.{{ result.page_start }}{% if result.page_end and result.page_end != result.page_start %}&ndash;{{ result.page_end }}{% endif %}{% else %}{{ result.resource.get_resource_type_display }}{% endif %}
+              </span>
+            </div>
+            <p class="meta">{{ result.resource.author }}{% if result.resource.subject %} &middot; {{ result.resource.subject }}{% endif %}
+              {% if result.semantic_score %} &middot; semantic{% endif %}
+            </p>
+            <p class="snippet">{{ result.snippet|safe }}</p>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="card notice">
+        <p>No results for &ldquo;{{ query }}&rdquo;. Try different words, or check that the material has finished processing.</p>
+      </div>
+    {% endif %}
+  {% endif %}
+{% endblock %}

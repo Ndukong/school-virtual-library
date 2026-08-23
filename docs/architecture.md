@@ -1,6 +1,6 @@
 # Architecture
 
-Status: current as of Phase 2 (digital library).
+Status: current as of Phase 4 (semantic search).
 
 ---
 
@@ -49,6 +49,8 @@ students/          Student profile model
 teachers/          Teacher profile model
 library/           Resources, books, chapters/sections, upload, reader
 documents/         Extraction pipeline, chunks, job queue, worker command
+ai/                AI provider abstraction, usage logging
+search/            Keyword + semantic + hybrid retrieval
 templates/         Project-level templates (base, login, dashboards)
 static/            Project-level static assets (CSS)
 docs/              Architecture and future technical documentation
@@ -112,8 +114,8 @@ meaningful boundary:
 | `schools`, `classes`, `subjects`, `students`, `teachers` | Core domain structure | 1 (created) |
 | `library` | Resources, books, chapters, sections, metadata | 2 (created; upload/reader live here) |
 | `documents` | Extraction pipeline, chunks, processing jobs | 3 (created) |
-| `search` | Keyword + semantic search (pgvector) | 4 |
-| `ai` | AI provider abstraction and RAG orchestration | 4/5 |
+| `search` | Keyword + semantic search | 4 (created; pgvector swap pending Postgres) |
+| `ai` | AI provider abstraction and usage logging | 4 (created) |
 | `question_bank` | Question CRUD, Bloom, marking schemes | 7 |
 | `examinations` | Exam generation and validation | 8 |
 | `learning` | Student practice and progress | 9 |
@@ -275,6 +277,44 @@ tables; original files are never modified.
 
 ---
 
+## 5.4 Phase 4 Design Decisions (Semantic Search)
+
+### AI provider abstraction
+All AI access goes through the `ai` app (`AGENTS.md` section 13). Providers:
+`mock` (deterministic offline vectors - tests/dev), `openai_compatible`
+(NVIDIA NIM, routers, vLLM via `AI_BASE_URL`), and `gemini`. Groq has no
+embeddings endpoint and is reserved for chat generation in Phase 5. Every
+call is wrapped with timeout + exponential-backoff retries, and logged to
+`AIRequestLog` (provider, model, kind, ok/error, latency, tokens where the
+API reports them). Keys live only in `.env`; nothing is hard-coded.
+
+### Embedding pipeline
+The processing queue gained an EMBED step chained automatically after CHUNK;
+resource status becomes EMBEDDING then READY. `ChunkEmbedding` stores the
+vector as JSON alongside `model_name`/`dimensions`; embeddings are generated
+once per chunk unless the model changes (stale vectors are deleted and
+re-embedded per AGENTS.md section 14).
+
+### Vector storage today vs pgvector
+PostgreSQL/pgvector is not installed locally, so vectors live in JSON and
+cosine ranking runs in Python over the permission-filtered candidate set -
+fine at school-library scale. The search interface in
+`search.services.hybrid_search` does not change when pgvector lands: only
+the storage/ranking internals swap.
+
+### Permission-first retrieval
+Every query starts from chunks whose resource passes `visible_resources`
+(school scoping + access policy), then applies scope filters (subject,
+class, resource type, single book) and ranks within that set. Unauthorized
+content can never leak through similarity.
+
+### Hybrid retrieval
+Keyword ranking (term coverage over chunk text) and semantic ranking fuse
+via Reciprocal Rank Fusion. Provider outages degrade gracefully to
+keyword-only results. Snippets escape HTML and mark matches server-side.
+
+---
+
 ## 6. Security Baseline
 
 Security-relevant choices already made in Phase 0:
@@ -346,11 +386,14 @@ Both must pass before the phase is considered complete.
 
 - Object storage provider (`STORAGE_PROVIDER`) for large documents: when
   production deployment nears (local MEDIA storage is sufficient for now).
+- PostgreSQL/pgvector deployment for production-scale vector ranking
+  (current JSON+Python approach is the documented fallback).
 - OCR engine deployment (Tesseract binary) for scanned textbooks: required
   before Phase 5 can answer questions from scanned books.
-- Celery/Redis adoption if concurrent workers are needed: the dispatcher is
-  designed to swap without touching task logic.
-- Embedding generation step (EMBEDDING status): Phase 4.
+- Which provider of record serves chat generation in Phase 5 (Groq, Gemini,
+  or an OpenAI-compatible router) - the abstraction already supports all.
+- Embedding model of record for production (NVIDIA NIM vs Gemini embeddings);
+  model switches trigger automatic re-embedding.
 - Additional upload formats (DOCX, images, EPUB): when their extraction
   pipelines exist; PDF-only is a deliberate constraint.
 - Self-service admin views beyond Django admin (school dashboards): later.

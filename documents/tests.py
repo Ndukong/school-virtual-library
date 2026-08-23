@@ -307,17 +307,21 @@ class InlinePipelineIntegrationTests(DocumentsTestBase):
 
 class WorkerCommandTests(DocumentsTestBase):
     def test_drain_processes_pending_jobs_in_order(self):
+        from documents.models import ChunkEmbedding
+
         resource = self.make_pdf_resource()
         enqueue(resource, ProcessingJob.Step.EXTRACT)
         enqueue(resource, ProcessingJob.Step.CHUNK)
         with override_settings(DOCUMENTS_INLINE_PROCESSING=False):
             processed = drain_queue()
-        self.assertEqual(processed, 2)
+        # EXTRACT + CHUNK + chained EMBED.
+        self.assertEqual(processed, 3)
         resource.refresh_from_db()
         self.assertEqual(resource.processing_status, Resource.ProcessingStatus.READY)
         self.assertEqual(
-            ProcessingJob.objects.filter(status=ProcessingJob.Status.SUCCEEDED).count(), 2
+            ProcessingJob.objects.filter(status=ProcessingJob.Status.SUCCEEDED).count(), 3
         )
+        self.assertTrue(ChunkEmbedding.objects.filter(chunk__resource=resource).exists())
 
     def test_management_command_once(self):
         resource = self.make_pdf_resource()

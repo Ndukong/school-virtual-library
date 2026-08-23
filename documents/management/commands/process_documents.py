@@ -36,11 +36,12 @@ class Command(BaseCommand):
             if resource is None:
                 raise self.error(f"No resource with public_id {resource_id}")
             enqueue(resource, ProcessingJob.Step.EXTRACT)
-            job = enqueue(resource, ProcessingJob.Step.CHUNK)
-            # CHUNK depends on EXTRACT; ensure ordering by draining twice.
-            drain_queue()
-            if job.status == ProcessingJob.Status.PENDING:
-                drain_queue()
+            enqueue(resource, ProcessingJob.Step.CHUNK)
+            enqueue(resource, ProcessingJob.Step.EMBED)
+            # Drain repeatedly: EMBED is chained after CHUNK succeeds.
+            for _ in range(3):
+                if not drain_queue():
+                    break
             self.stdout.write(self.style.SUCCESS(f"Processed pipeline for {resource.title}"))
             return
 

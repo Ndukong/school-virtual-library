@@ -18,7 +18,13 @@ from django.conf import settings
 from django.db import transaction
 from pypdf import PdfReader
 
-from documents.models import DocumentChunk, ExtractedPage, ProcessingLog, ProcessingJob
+from documents.models import (
+    ChunkEmbedding,
+    DocumentChunk,
+    ExtractedPage,
+    ProcessingJob,
+    ProcessingLog,
+)
 from library.models import Resource
 
 
@@ -198,6 +204,58 @@ def chunk_resource(resource):
 
 
 @transaction.atomic
+def embed_resource_chunks(resource):
+    """Embed chunks that lack a current-model vector; re-embed on model change.
+
+    Embeddings are generated once per chunk unless the embedding model changes
+    (AGENTS.md section 14). Returns stats about what was (re)embedded.
+    """
+    from ai.models import AIRequestLog  # noqa: F401 - imported for clarity in logs below
+    from ai.providers import get_provider
+
+    provider = get_provider()
+    model_name = provider.model
+
+    stale = ChunkEmbedding.objects.filter(chunk__resource=resource).exclude(
+        model_name=model_name
+    )
+    if stale.exists():
+        log_event(
+            resource,
+            ProcessingLog.Level.INFO,
+            f"Embedding model changed to {model_name}; re-embedding "
+            f"{stale.count()} stale vector(s).",
+        )
+        stale.delete()
+
+    pending_chunks = list(
+        DocumentChunk.objects.filter(resource=resource, embedding__isnull=True).order_by("sequence")
+    )
+    embedded_now = 0
+    batch_size = 16
+    for start in range(0, len(pending_chunks), batch_size):
+        batch = pending_chunks[start : start + batch_size]
+        try:
+            vectors = provider.embed([chunk.text for chunk in batch])
+        except Exception as exc:  # noqa: BLE001 - recorded as pipeline failure
+            raise PipelineError(f"Embedding failed: {exc}") from exc
+        for chunk, vector in zip(batch, vectors):
+            ChunkEmbedding.objects.create(
+                chunk=chunk,
+                model_name=model_name,
+                dimensions=len(vector),
+                vector=list(vector),
+            )
+            embedded_now += 1
+
+    return {
+        "embedded": embedded_now,
+        "skipped_existing": resource.chunks.count() - embedded_now,
+        "model": model_name,
+    }
+
+
+@transaction.atomic
 def execute_step(job):
     """Run one job's step. Raises PipelineError for expected failures."""
     resource = job.resource
@@ -219,6 +277,18 @@ def execute_step(job):
         set_processing_status(resource, Resource.ProcessingStatus.CHUNKING)
         stats = chunk_resource(resource)
         log_event(resource, ProcessingLog.Level.INFO, f"Created {stats['chunks']} chunk(s).")
+        # READY is set by the EMBED step; dispatcher chains CHUNK -> EMBED.
+    elif job.step == ProcessingJob.Step.EMBED:
+        if not resource.chunks.exists():
+            raise PipelineError("No chunks found; run chunking first.")
+        set_processing_status(resource, Resource.ProcessingStatus.EMBEDDING)
+        stats = embed_resource_chunks(resource)
+        log_event(
+            resource,
+            ProcessingLog.Level.INFO,
+            f"Embedded {stats['embedded']} chunk(s) with {stats['model']} "
+            f"({stats['skipped_existing']} reused).",
+        )
         set_processing_status(resource, Resource.ProcessingStatus.READY)
     else:
         raise PipelineError(f"Unknown processing step: {job.step}")
