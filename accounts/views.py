@@ -1,4 +1,5 @@
 from django.contrib.auth.views import LoginView as DjangoLoginView
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect
 from django.views.generic import TemplateView, View
 
@@ -55,4 +56,18 @@ class StudentDashboardView(StudentRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["student_profile"] = getattr(self.request.user, "student_profile", None)
+        return context
+
+
+class ProfileView(LoginRequiredMixin, TemplateView):
+    """Personal hub: account info and role-appropriate links (PWA nav item)."""
+
+    template_name = "accounts/profile.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        context["school"] = user.school
+        context["student_profile"] = getattr(user, "student_profile", None)
+        context["teacher_profile"] = getattr(user, "teacher_profile", None)
         return context

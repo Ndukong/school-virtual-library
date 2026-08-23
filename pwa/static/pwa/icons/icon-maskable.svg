@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img">
+  <title>School Virtual Library (maskable)</title>
+  <!-- Full-bleed background required for maskable icons. -->
+  <rect width="512" height="512" fill="#0b5fa5"/>
+  <g transform="translate(56 56) scale(0.78)">
+    <rect width="512" height="512" rx="120" fill="#f4f6f8"/>
+    <path d="M120 150h96c24 0 46 10 60 30 14-20 36-30 60-30h56c17 0 30 13 30 30v180c0 17-13 30-30 30h-52c-23 0-44 10-58 28h-8c-14-18-35-28-58-28h-52c-17 0-30-13-30-30V180c0-17 13-30 30-30z" fill="#0b5fa5"/>
+    <path d="M218 180h80v176h-80z" fill="#f4f6f8"/>
+    <path d="M222 202h28v150h-28zM262 202h28v150h-28z" fill="#0b5fa5" opacity="0.3"/>
+  </g>
+</svg>

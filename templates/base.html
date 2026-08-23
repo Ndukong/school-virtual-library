@@ -5,8 +5,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
+  <meta name="description" content="Approved school learning resources, AI tutoring, and practice.">
+  <meta name="theme-color" content="#0b5fa5">
+  <link rel="manifest" href="{% url 'pwa-manifest' %}">
+  <link rel="icon" href="/static/pwa/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/pwa/icons/icon.svg">
   <title>{% block title %}School Virtual Library{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'css/site.css' %}">
+  {% if PWA_ENABLED %}
+    <script src="{% static 'pwa/sw-register.js' %}" defer></script>
+  {% endif %}
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -19,6 +27,7 @@
         <a href="{% url 'search' %}">Search</a>
         {% if user.role == "STUDENT" %}<a href="{% url 'practice-home' %}">Practice</a>{% endif %}
         <a href="{% url 'ai-ask' %}">AI Tutor</a>
+        <a href="{% url 'profile' %}">Profile</a>
         {% if user.role == "TEACHER" or user.role == "ADMIN" or user.is_superuser %}
           <a href="{% url 'question-list' %}">Question Bank</a>
           <a href="{% url 'exam-list' %}">Exams</a>

@@ -72,3 +72,16 @@ class TeacherRequiredMixin(RoleRequiredMixin):
 
 class StudentRequiredMixin(RoleRequiredMixin):
     required_role = User.Role.STUDENT
+
+
+class AdminOrTeacherRequiredMixin(RoleRequiredMixin):
+    """Allow administrators (incl. superusers) and teachers only."""
+
+    required_role = None
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not (
+            is_admin(request.user) or is_teacher(request.user)
+        ):
+            raise PermissionDenied("You do not have permission to perform this action.")
+        return super().dispatch(request, *args, **kwargs)

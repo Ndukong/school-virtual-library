@@ -889,6 +889,28 @@ To enable with a real Meta Business account: set `WHATSAPP_PROVIDER=meta`,
 **Recommended next step: Phase 11 — PWA** (installable manifest, mobile
 optimization, offline-friendly caching, service worker).
 
+**Phase 11 — PWA: COMPLETE.**
+
+Established:
+
+- Installable manifest (`/manifest.webmanifest`) with SVG + maskable icons,
+  standalone display, theme colors; `no-store` service worker served at
+  `/sw.js` with root scope (`Service-Worker-Allowed: /`)
+- Conservative offline strategy: static shell only (CSS/manifest/`/offline/`);
+  navigations are network-first, so PDFs, search and AI answers are NEVER
+  cached offline (student-data and copyright safe)
+- Mobile-interaction CSS: 44px nav touch targets, `touch-action: manipulation`,
+  safe-area insets, tap-highlight styling - still zero JS frameworks
+- `Profile` page completing the recommended primary navigation (Home, Library,
+  Search, Practice, AI Tutor, Profile) with role-aware links
+- `PWA_ENABLED` setting to disable registration (dev/browser contexts)
+- 8 additional tests (284 total): manifest contract, worker headers/content,
+  offline shell, profile auth, manifest/registration wiring on the login page
+
+**Recommended next step: Phase 12 — Analytics** (library usage, AI usage,
+practice performance, popular topics, teacher activity - school-level only,
+never exposing individual students).
+
 **Recommended next step: Phase 9 — Student Practice** (quizzes from approved
 questions without answers until submission, scoring, explanations, personal
 progress - never exposing other students' results).

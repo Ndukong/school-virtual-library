@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "examinations",
     "learning",
     "whatsapp",
+    "pwa",
 ]
 
 # Custom user model. Must remain set before the first migration; changing it
@@ -95,6 +96,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "pwa.context_processors.pwa_enabled",
             ],
         },
     },
@@ -259,6 +261,11 @@ WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
 WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v21.0")
 WHATSAPP_RATE_LIMIT_PER_MINUTE = int(os.getenv("WHATSAPP_RATE_LIMIT_PER_MINUTE", "10"))
 WHATSAPP_LINK_CODE_MINUTES = int(os.getenv("WHATSAPP_LINK_CODE_MINUTES", "15"))
+
+# PWA (Phase 11). Registers the service worker (its network-first strategy
+# only caches the static shell; authenticated content and files are never
+# stored offline).
+PWA_ENABLED = _env_bool("PWA_ENABLED", default=True)
 
 
 # Default primary key field type

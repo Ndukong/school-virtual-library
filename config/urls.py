@@ -15,6 +15,7 @@ urlpatterns = [
     path("exams/", include("examinations.urls")),
     path("practice/", include("learning.urls")),
     path("whatsapp/", include("whatsapp.urls")),
+    path("", include("pwa.urls")),
     path("library/", include("library.urls")),
     path("search/", include("search.urls")),
     path("ai/", include("ai.urls")),

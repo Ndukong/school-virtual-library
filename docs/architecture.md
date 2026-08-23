@@ -56,6 +56,7 @@ question_bank/     Questions, metadata, approval workflow, AI import
 examinations/      Exam assembly from approved questions, validation, printing
 learning/          Student practice: quizzes, scoring, private progress
 whatsapp/          Verified webhook, phone linking, thin menu router
+pwa/               Manifest, service worker, offline shell, Profile page
 templates/         Project-level templates (base, login, dashboards)
 static/            Project-level static assets (CSS)
 docs/              Architecture and future technical documentation
@@ -125,6 +126,7 @@ meaningful boundary:
 | `examinations` | Exam generation and validation | 8 (created) |
 | `learning` | Student practice and progress | 9 (created) |
 | `whatsapp` | Webhook and message handling (thin layer) | 10 (created) |
+| `pwa` | Installable PWA shell, manifest, service worker, offline | 11 (created) |
 | `notifications` | User notifications | 12 |
 | `reports` | Analytics and reporting | 12 |
 
@@ -509,6 +511,34 @@ ASK/SEARCH inherit the exact permission filtering of the web search, so an
 unlinked/other-school context cannot leak content. The `console` provider
 logs outbound text without touching the network (dev/tests); `meta` posts
 to the Graph API with a timeout+single retry.
+
+---
+
+## 5.11 Phase 11 Design Decisions (PWA)
+
+### Conservative offline strategy
+The service worker caches ONLY the static shell: `site.css`, the manifest,
+and `/offline/`. Navigations are NETWORK FIRST - authenticated pages, PDFs,
+search results, and AI answers are never stored offline (student-data and
+copyright-safe). Offline connections receive the static `/offline/` shell.
+The worker is served at `/sw.js` with `Service-Worker-Allowed: /` and
+`no-store` so cache policy versions update promptly.
+
+### Zero-dependency mobile web app
+No JS framework: a tiny registration script, the manifest view, and no more
+JS than Phase 1. CSS adds `touch-action: manipulation`, enlarge touch
+targets to 44px for nav links, safe-area insets, and tap-highlight style -
+keeping the low-bandwidth/mobile-first posture from AGENTS section 20.
+
+### Installable metadata
+Manifest served from `pwa` app views (name/short_name/start_url/theme,
+standalone display) with an SVG icon plus a maskable variant. PNG icons are
+a documented follow-up for full iOS homescreen fidelity.
+
+### Profile page
+`/profile/` completes the recommended primary navigation (Home, Library,
+Search, Practice, AI Tutor, Profile) with a role-aware link hub (own
+progress, own AI materials, staff areas).
 
 ---
 
