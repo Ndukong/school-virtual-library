@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Student dashboard - School Virtual Library{% endblock %}
+{% block content %}
+  <h1>Student dashboard</h1>
+  {% with profile=student_profile %}
+    {% if profile %}
+      <div class="card">
+        <p><strong>School:</strong> {{ profile.school.name }}</p>
+        <p><strong>Class:</strong> {{ profile.school_class.name|default:"Not assigned yet" }}</p>
+        <p><strong>Admission number:</strong> {{ profile.admission_number }}</p>
+      </div>
+    {% else %}
+      <div class="card notice">
+        <p>No student profile is linked to your account yet. Ask your school administrator.</p>
+      </div>
+    {% endif %}
+  {% endwith %}
+{% endblock %}

@@ -668,6 +668,17 @@ Established:
 - `docs/architecture.md` recording Phase 0 decisions
 - Initial configuration smoke tests (`python manage.py test`)
 
+**Phase 1 — Core Platform: COMPLETE.**
+
+Established:
+
+- Custom user model (`accounts.User`) with roles (Administrator / Teacher / Student) and school scoping
+- Schools, classes, subjects, student profiles, teacher profiles with per-school uniqueness constraints
+- Centralized permission helpers and role-gated dashboards (login/logout, role routing)
+- School-isolated Django admin: non-superuser admins see and manage only their own school; privilege escalation blocked
+- `create_school_admin` management command for onboarding schools
+- 72 tests covering models, permissions (allow/deny), auth flows, admin scoping, and the command
+
 Development commands:
 
 ```bash
@@ -675,13 +686,16 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 
+python manage.py migrate
+python manage.py createsuperuser        # platform superuser
+python manage.py create_school_admin --school "Name" --username admin1
 python manage.py check
 python manage.py test
 python manage.py runserver
 ```
 
-**Recommended next step: Phase 1 — Core Platform** (authentication, roles,
-schools, classes, subjects, students, teachers, admin).
+**Recommended next step: Phase 2 — Digital Library** (resources, books,
+chapters, sections, metadata, upload, storage, permissions, reader).
 
 ---
 

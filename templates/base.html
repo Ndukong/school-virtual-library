@@ -1,0 +1,31 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{% block title %}School Virtual Library{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/site.css' %}">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <span class="site-name">School Virtual Library</span>
+    {% if user.is_authenticated %}
+      <div class="user-box">
+        <span class="user-label">
+          {{ user.get_full_name|default:user.username }} &middot; {{ user.get_role_display }}
+        </span>
+        <form method="post" action="{% url 'logout' %}" class="inline-form">
+          {% csrf_token %}
+          <button type="submit" class="link-button">Log out</button>
+        </form>
+      </div>
+    {% endif %}
+  </header>
+  <main id="main" class="container">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

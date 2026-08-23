@@ -6,6 +6,7 @@ set DATABASE_URL to a PostgreSQL URL to switch backends (production target).
 """
 
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -47,7 +48,22 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Local applications
     "common.apps.CommonConfig",
+    "accounts",
+    "schools",
+    "classes",
+    "subjects",
+    "students",
+    "teachers",
 ]
+
+# Custom user model. Must remain set before the first migration; changing it
+# later requires a full database rebuild.
+AUTH_USER_MODEL = "accounts.User"
+
+# Authentication flow
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "home"
+LOGOUT_REDIRECT_URL = "login"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -64,7 +80,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -143,6 +159,10 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Fast (insecure) hashing during test runs only; never used for real accounts.
+if len(sys.argv) > 1 and sys.argv[1] == "test":
+    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -161,6 +181,7 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
 
 # User-uploaded document storage. Documents must never be publicly served;
 # controlled download views are implemented in a later phase.

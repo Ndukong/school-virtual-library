@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Teacher dashboard - School Virtual Library{% endblock %}
+{% block content %}
+  <h1>Teacher dashboard</h1>
+  {% with profile=teacher_profile %}
+    {% if profile %}
+      <p class="subtitle">{{ profile.school.name }}</p>
+      <div class="card">
+        <h2>Your subjects</h2>
+        {% if profile.subjects.all %}
+          <ul class="plain-list">
+            {% for subject in profile.subjects.all %}
+              <li>{{ subject }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>No subjects assigned yet. Ask your school administrator.</p>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="card notice">
+        <p>No teacher profile is linked to your account yet. Ask your school administrator.</p>
+      </div>
+    {% endif %}
+  {% endwith %}
+{% endblock %}

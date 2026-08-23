@@ -1,5 +1,6 @@
 """Tests for environment-driven configuration in config.settings."""
 
+from django.conf import settings
 from django.test import SimpleTestCase
 
 from config.settings import parse_postgresql_url
@@ -42,3 +43,13 @@ class ParsePostgresqlUrlTests(SimpleTestCase):
     def test_unsupported_scheme_raises(self):
         with self.assertRaises(ValueError):
             parse_postgresql_url("mysql://u:p@h:3306/dbname")
+
+
+class AuthConfigurationTests(SimpleTestCase):
+    def test_custom_user_model_is_configured(self):
+        self.assertEqual(settings.AUTH_USER_MODEL, "accounts.User")
+
+    def test_auth_flow_settings_point_to_named_routes(self):
+        self.assertEqual(settings.LOGIN_URL, "login")
+        self.assertEqual(settings.LOGIN_REDIRECT_URL, "home")
+        self.assertEqual(settings.LOGOUT_REDIRECT_URL, "login")
