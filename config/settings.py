@@ -215,15 +215,27 @@ AI_PROVIDER = os.getenv("AI_PROVIDER", "mock")
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_BASE_URL = os.getenv("AI_BASE_URL", "")
 AI_EMBEDDING_MODEL = os.getenv("AI_EMBEDDING_MODEL", "mock-embed-small")
-AI_CHAT_MODEL = os.getenv("AI_CHAT_MODEL", "")
 AI_TIMEOUT_SECONDS = int(os.getenv("AI_TIMEOUT_SECONDS", "30"))
 AI_MAX_RETRIES = int(os.getenv("AI_MAX_RETRIES", "2"))
+
+# Chat generation (Phase 5). Groq is the default chat provider; gemini and
+# openai_compatible (NVIDIA NIM / routers) are selectable backups. The
+# factory applies per-provider default models unless AI_CHAT_MODEL is set.
+AI_CHAT_PROVIDER = os.getenv("AI_CHAT_PROVIDER", "groq")
+AI_CHAT_MODEL = os.getenv("AI_CHAT_MODEL", "")
 
 # Search behaviour (Phase 4). Vectors are stored with their model name so a
 # model switch triggers re-embedding instead of mixing vector spaces.
 SEARCH_SEMANTIC_TOP_K = 12
 SEARCH_KEYWORD_TOP_K = 12
 SEARCH_MIN_SIMILARITY = 0.15
+
+# AI Librarian (Phase 5). Retrieved text is DATA, never instructions; the
+# answer must cite only the sources actually provided in the context.
+RAG_TOP_K = 8
+RAG_MAX_CONTEXT_CHARS = 6000
+RAG_PROMPT_VERSION = "rag-v1"
+AI_RATE_LIMIT_PER_MINUTE = 10
 
 
 # Default primary key field type

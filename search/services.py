@@ -55,7 +55,8 @@ def _candidate_chunks(user, scope):
 
 
 def _terms(query):
-    return [t for t in re.split(r"\s+", query.strip()) if len(t) > 1][:12]
+    """Tokenize a query into searchable terms (punctuation stripped)."""
+    return re.findall(r"[A-Za-z0-9]{2,}", query or "")[:12]
 
 
 def keyword_search(user, query, scope=None, limit=None):

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}AI Tutor - School Virtual Library{% endblock %}
+{% block content %}
+  <h1>AI Tutor</h1>
+  {% if error_message %}
+    <p class="error" role="alert">{{ error_message }}</p>
+  {% endif %}
+  {% if scope == "BOOK" and scope_target %}
+    <p class="subtitle">Asking about the book: <strong>{{ scope_target.title }}</strong></p>
+  {% elif scope == "CHAPTER" and scope_target %}
+    <p class="subtitle">Asking about the chapter: <strong>{{ scope_target.title }}</strong> ({{ scope_target.resource.title }})</p>
+  {% else %}
+    <p class="subtitle">Answers about school material are grounded in your library and cite their sources.</p>
+  {% endif %}
+
+  <form method="post" class="card auth-form">
+    {% csrf_token %}
+    <input type="hidden" name="scope" value="{{ scope }}">
+    <input type="hidden" name="book" value="{{ book_param }}">
+    <input type="hidden" name="chapter" value="{{ chapter_param }}">
+    <label for="id_question">Your question</label>
+    <textarea name="question" id="id_question" rows="4" required
+              placeholder="e.g. Explain electromagnetic induction with an example.">{{ request.POST.question|default:'' }}</textarea>
+    <button type="submit">Ask</button>
+  </form>
+
+  {% if scope == "GENERAL" %}
+    <p class="subtitle">General mode: answers are not grounded in school materials.</p>
+  {% else %}
+    <div class="card notice">
+      <p>Scope options: ask from the <a href="{% url 'ai-ask' %}">whole library</a>,
+      or open a book or chapter in the <a href="{% url 'library-list' %}">library</a>
+      and use its AI Tutor link to focus on that material.</p>
+    </div>
+  {% endif %}
+{% endblock %}

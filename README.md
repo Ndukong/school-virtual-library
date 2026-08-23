@@ -742,6 +742,32 @@ AI_EMBEDDING_MODEL=nvidia/nv-embedqa-e5-v5
 Then re-run pipelines: `python manage.py process_documents --resource-id <uuid>`
 (or re-upload). Groq has no embeddings endpoint - reserve it for Phase 5 chat.
 
+**Phase 5 — AI Librarian: COMPLETE.**
+
+Established:
+
+- RAG question answering grounded in the school library: Ask (whole library),
+  Ask This Book, Ask This Chapter - retrieval is always permission-filtered first
+- Groq as default chat provider (`AI_CHAT_PROVIDER=groq`); Gemini and NVIDIA
+  NIM selectable as backups via env; offline `mock` for tests
+- Versioned, injection-resistant system prompt: retrieved text is DATA not
+  instructions; citations `[n]` must match provided sources; invented
+  pages/quotes forbidden; insufficient material answered honestly WITHOUT
+  calling the model
+- Citation validation + sanitizing; answer page shows Sources Used with links,
+  pages, and chapter names (source inspection)
+- Per-user rate limiting, provider-outage fallback messaging, full audit via
+  `AIInteraction`; answers are owner-only (404 cross-user)
+
+To enable the real chat provider:
+
+```bash
+# .env
+AI_CHAT_PROVIDER=groq
+AI_API_KEY=gsk-...
+# optional: AI_CHAT_MODEL=llama-3.1-8b-instant
+```
+
 Development commands:
 
 ```bash
@@ -758,9 +784,9 @@ python manage.py test
 python manage.py runserver
 ```
 
-**Recommended next step: Phase 5 — AI Librarian** (Ask AI / Ask This Book /
-Ask This Chapter with RAG over retrieved chunks, citations anchored to pages,
-prompt-injection-resistant system prompts).
+**Recommended next step: Phase 6 — AI Study Tools** (summaries, revision
+notes, definitions/formulae, practice-question generation from selected
+material).
 
 ---
 

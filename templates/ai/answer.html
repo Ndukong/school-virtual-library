@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Answer - AI Tutor{% endblock %}
+{% block content %}
+  <h1>AI Tutor</h1>
+  <div class="card">
+    <h2>Question</h2>
+    <p>{{ interaction.question }}</p>
+    <p class="meta">{{ interaction.get_scope_display }}
+      {% if interaction.model %} &middot; {{ interaction.model }}{% endif %}
+      {% if interaction.prompt_version %} &middot; prompt {{ interaction.prompt_version }}{% endif %}
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Answer</h2>
+    <p class="answer-text">{{ interaction.answer|linebreaksbr }}</p>
+    {% if not interaction.used_provider %}
+      <p class="meta">Answered without the AI service (no matching material or service unavailable).</p>
+    {% endif %}
+  </div>
+
+  {% if sources %}
+    <section class="card" aria-label="Sources">
+      <h2>Sources used</h2>
+      <ul class="plain-list">
+        {% for chunk in sources %}
+          <li>
+            <a href="{{ chunk.resource.get_absolute_url }}">{{ chunk.resource.title }}</a>
+            {% if chunk.page_start %}
+              &middot; {% if chunk.page_end and chunk.page_end != chunk.page_start %}pages {{ chunk.page_start }}&ndash;{{ chunk.page_end }}{% else %}page {{ chunk.page_start }}{% endif %}
+            {% endif %}
+            {% if chunk.chapter %} &middot; {{ chunk.chapter.title }}{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="meta">Only the sources listed above were used. If something is missing from them, the material may not cover your question.</p>
+    </section>
+  {% endif %}
+
+  <p><a href="{% url 'ai-ask' %}">Ask another question</a></p>
+{% endblock %}

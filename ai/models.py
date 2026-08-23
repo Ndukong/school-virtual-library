@@ -1,5 +1,8 @@
-"""AI usage tracking (AGENTS.md sections 14/28)."""
+"""AI usage tracking and interaction audit (AGENTS.md sections 14/28)."""
 
+import uuid
+
+from django.conf import settings
 from django.db import models
 
 
@@ -30,3 +33,43 @@ class AIRequestLog(models.Model):
     def __str__(self):
         status = "ok" if self.ok else "error"
         return f"{self.provider}/{self.model} {self.kind} [{status}]"
+
+
+class AIInteraction(models.Model):
+    """One ask-the-librarian question/answer pair, kept for audit and abuse
+    monitoring. Answers cite only sources retrieved for that question."""
+
+    class Scope(models.TextChoices):
+        GENERAL = "GENERAL", "General AI"
+        LIBRARY = "LIBRARY", "Whole library"
+        SUBJECT = "SUBJECT", "Subject"
+        CLASS = "CLASS", "Class/form"
+        BOOK = "BOOK", "Book"
+        CHAPTER = "CHAPTER", "Chapter"
+
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ai_interactions"
+    )
+    school = models.ForeignKey(
+        "schools.School", on_delete=models.PROTECT, null=True, blank=True, related_name="ai_interactions"
+    )
+    scope = models.CharField(max_length=12, choices=Scope.choices, default=Scope.LIBRARY)
+    question = models.TextField()
+    answer = models.TextField(blank=True)
+    model = models.CharField(max_length=120, blank=True)
+    prompt_version = models.CharField(max_length=20, blank=True)
+    cited_chunk_ids = models.JSONField(default=list, blank=True)
+    retrieved_count = models.PositiveSmallIntegerField(default=0)
+    used_provider = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["school", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user}: {self.question[:60]}"

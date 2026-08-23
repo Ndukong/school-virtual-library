@@ -1,6 +1,6 @@
 # Architecture
 
-Status: current as of Phase 4 (semantic search).
+Status: current as of Phase 5 (AI Librarian).
 
 ---
 
@@ -49,7 +49,8 @@ students/          Student profile model
 teachers/          Teacher profile model
 library/           Resources, books, chapters/sections, upload, reader
 documents/         Extraction pipeline, chunks, job queue, worker command
-ai/                AI provider abstraction, usage logging
+ai/                AI provider abstraction (chat: Groq default; Gemini/NIM
+                   backups), usage logging, RAG orchestration
 search/            Keyword + semantic + hybrid retrieval
 templates/         Project-level templates (base, login, dashboards)
 static/            Project-level static assets (CSS)
@@ -115,7 +116,7 @@ meaningful boundary:
 | `library` | Resources, books, chapters, sections, metadata | 2 (created; upload/reader live here) |
 | `documents` | Extraction pipeline, chunks, processing jobs | 3 (created) |
 | `search` | Keyword + semantic search | 4 (created; pgvector swap pending Postgres) |
-| `ai` | AI provider abstraction and usage logging | 4 (created) |
+| `ai` | AI provider abstraction, RAG orchestration, usage logging | 4/5 (created) |
 | `question_bank` | Question CRUD, Bloom, marking schemes | 7 |
 | `examinations` | Exam generation and validation | 8 |
 | `learning` | Student practice and progress | 9 |
@@ -315,6 +316,44 @@ keyword-only results. Snippets escape HTML and mark matches server-side.
 
 ---
 
+## 5.5 Phase 5 Design Decisions (AI Librarian)
+
+### Chat provider: Groq by default, selectable backups
+Groq is the default chat provider (`AI_CHAT_PROVIDER=groq`) using its
+OpenAI-compatible endpoint; per-provider default models apply unless
+`AI_CHAT_MODEL` overrides (`llama-3.3-70b-versatile` for Groq,
+`gemini-2.0-flash` for Gemini). Backups are selectable via env only:
+`gemini`, `openai_compatible` (NVIDIA NIM / routers), `mock` for offline
+tests. The factory fails fast with a clear error when a network provider is
+selected without an API key.
+
+### RAG orchestration (`ai/rag.py`)
+Question -> permission-filtered hybrid retrieval -> numbered source blocks
+wrapped in `<retrieved_documents>` delimiters -> grounded generation ->
+citation validation. Grounded scopes (library/subject/class/book/chapter)
+answer ONLY from retrieved sources; when retrieval returns nothing the
+system answers honestly WITHOUT calling the model - no hallucination surface
+and no wasted tokens. General scope skips retrieval entirely.
+
+### Prompt discipline (SKILLS.md sections 8/9/29)
+A versioned system prompt (`RAG_PROMPT_VERSION=rag-v1`, recorded on every
+interaction) states that retrieved text is DATA not instructions, forbids
+inventing pages/quotations/sources, requires [n] citations matching provided
+blocks, and mandates an explicit "not enough material" response when sources
+are insufficient. Post-generation sanitizing strips citation markers that
+reference non-existent blocks.
+
+### Audit, privacy, and abuse control
+Every question creates an `AIInteraction` (user, school, scope, question,
+answer, model, prompt version, cited chunk ids, retrieved count) used for
+audit and school-level analytics later; answer pages are owner-only
+(cross-user access yields 404). A per-user rate limit
+(`AI_RATE_LIMIT_PER_MINUTE`, default 10) guards API cost; superusers are
+exempt. Provider outages produce a friendly recorded answer rather than a
+500.
+
+---
+
 ## 6. Security Baseline
 
 Security-relevant choices already made in Phase 0:
@@ -389,11 +428,10 @@ Both must pass before the phase is considered complete.
 - PostgreSQL/pgvector deployment for production-scale vector ranking
   (current JSON+Python approach is the documented fallback).
 - OCR engine deployment (Tesseract binary) for scanned textbooks: required
-  before Phase 5 can answer questions from scanned books.
-- Which provider of record serves chat generation in Phase 5 (Groq, Gemini,
-  or an OpenAI-compatible router) - the abstraction already supports all.
+  before the AI Librarian can answer questions from scanned books.
 - Embedding model of record for production (NVIDIA NIM vs Gemini embeddings);
   model switches trigger automatic re-embedding.
+- Streaming responses and async question queue if LLM latency hurts UX.
 - Additional upload formats (DOCX, images, EPUB): when their extraction
   pipelines exist; PDF-only is a deliberate constraint.
 - Self-service admin views beyond Django admin (school dashboards): later.
