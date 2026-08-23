@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Question Bank{% endblock %}
+{% block content %}
+  <h1>Question Bank</h1>
+  <form method="get" class="filters card">
+    <label for="id_q">Search</label>
+    <input type="search" id="id_q" name="q" value="{{ current.q }}" placeholder="Question text...">
+    <label for="id_subject">Subject</label>
+    <select id="id_subject" name="subject">
+      <option value="">All</option>
+      {% for subject in subjects %}
+        <option value="{{ subject.pk }}" {% if current.subject == subject.pk|stringformat:"s" %}selected{% endif %}>{{ subject }}</option>
+      {% endfor %}
+    </select>
+    <label for="id_status">Status</label>
+    <select id="id_status" name="status">
+      <option value="">All</option>
+      {% for value, label in statuses %}
+        <option value="{{ value }}" {% if current.status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label for="id_type">Type</label>
+    <select id="id_type" name="type">
+      <option value="">All</option>
+      {% for value, label in question_types %}
+        <option value="{{ value }}" {% if current.type == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Filter</button>
+    <a class="btn-link" href="{% url 'question-create' %}">New question</a>
+    <a class="btn-link" href="{% url 'question-import' %}">Import from AI</a>
+  </form>
+
+  {% if object_list %}
+    <ul class="resource-list">
+      {% for question in object_list %}
+        <li class="card resource-card">
+          <div class="resource-head">
+            <a class="resource-title" href="{% url 'question-detail' question.public_id %}">{{ question.body|truncatechars:110 }}</a>
+            <span class="badge">{{ question.get_approval_status_display }}</span>
+          </div>
+          <p class="meta">
+            {{ question.get_question_type_display }} &middot; {{ question.marks }} marks
+            &middot; {{ question.get_bloom_level_display }}
+            {% if question.subject %} &middot; {{ question.subject }}{% endif %}
+            &middot; {{ question.topic }}
+          </p>
+        </li>
+      {% endfor %}
+    </ul>
+    {% if is_paginated %}
+      <nav class="pager" aria-label="Pagination">
+        {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&subject={{ current.subject }}&status={{ current.status }}&type={{ current.type }}&q={{ current.q }}">Previous</a>{% endif %}
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&subject={{ current.subject }}&status={{ current.status }}&type={{ current.type }}&q={{ current.q }}">Next</a>{% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="card notice"><p>No questions match. Create one or import AI practice questions for review.</p></div>
+  {% endif %}
+{% endblock %}

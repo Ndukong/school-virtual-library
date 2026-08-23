@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}New question - Question Bank{% endblock %}
+{% block content %}
+  <h1>{% if question %}Edit question{% else %}New question{% endif %}</h1>
+  {% if form.non_field_errors %}
+    <div class="error" role="alert">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+  {% endif %}
+  <form method="post" class="card upload-form">
+    {% csrf_token %}
+    {{ form.school.label_tag }}{{ form.school }}{{ form.school.errors }}
+    <label for="{{ form.subject.id_for_label }}">Subject</label>
+    {{ form.subject }}{{ form.subject.errors }}
+    <label for="{{ form.school_class.id_for_label }}">Class</label>
+    {{ form.school_class }}{{ form.school_class.errors }}
+    <label for="{{ form.topic.id_for_label }}">Topic *</label>
+    {{ form.topic }}{{ form.topic.errors }}
+    <label for="{{ form.subtopic.id_for_label }}">Subtopic</label>
+    {{ form.subtopic }}
+    <label for="{{ form.question_type.id_for_label }}">Type</label>
+    {{ form.question_type }}
+    <label for="{{ form.difficulty.id_for_label }}">Difficulty</label>
+    {{ form.difficulty }}
+    <label for="{{ form.marks.id_for_label }}">Marks</label>
+    {{ form.marks }}{{ form.marks.errors }}
+    <label for="{{ form.bloom_level.id_for_label }}">Bloom level</label>
+    {{ form.bloom_level }}
+    <label for="{{ form.body.id_for_label }}">Question *</label>
+    {{ form.body }}{{ form.body.errors }}
+    <label for="{{ form.options.id_for_label }}">Options (MCQ: one per line; leave empty otherwise)</label>
+    {{ form.options }}{{ form.options.errors }}
+    <label for="{{ form.correct_answer.id_for_label }}">Answer *</label>
+    {{ form.correct_answer }}{{ form.correct_answer.errors }}
+    <label for="{{ form.marking_scheme.id_for_label }}">Marking scheme</label>
+    {{ form.marking_scheme }}
+    <label for="{{ form.source_resource.id_for_label }}">Source material (optional)</label>
+    {{ form.source_resource }}
+    <label for="{{ form.chapter.id_for_label }}">Chapter (optional)</label>
+    {{ form.chapter }}
+    <label for="{{ form.page_number.id_for_label }}">Page number</label>
+    {{ form.page_number }}{{ form.page_number.errors }}
+    <button type="submit">Save question</button>
+  </form>
+{% endblock %}

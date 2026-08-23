@@ -18,6 +18,9 @@
         <a href="{% url 'library-list' %}">Library</a>
         <a href="{% url 'search' %}">Search</a>
         <a href="{% url 'ai-ask' %}">AI Tutor</a>
+        {% if user.role == "TEACHER" or user.role == "ADMIN" or user.is_superuser %}
+          <a href="{% url 'question-list' %}">Question Bank</a>
+        {% endif %}
       {% endif %}
     </nav>
     {% if user.is_authenticated %}
@@ -33,6 +36,13 @@
     {% endif %}
   </header>
   <main id="main" class="container">
+    {% if messages %}
+      <div class="messages" role="status">
+        {% for message in messages %}
+          <p class="message message-{{ message.level_tag }}">{{ message }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 </body>

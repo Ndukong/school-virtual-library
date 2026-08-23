@@ -805,6 +805,33 @@ Established:
 Entry points: `/ai/study/`, per-book "Study tools" button on resource pages,
 cross-links from the AI Tutor ask page.
 
+**Phase 7 — Question Bank: COMPLETE.**
+
+Established:
+
+- `Question` model with the full AGENTS.md metadata set: subject, class,
+  topic/subtopic, 9 question types (MCQ/TF/structured/grouped/essay/
+  calculation/practical/other), difficulty, marks, Bloom level, answer +
+  marking scheme, options for objective types
+- Source traceability: author, source resource/chapter/page, and `ai_generation`
+  link for imported questions
+- Approval workflow: Draft -> Pending review -> Approved/Rejected; editing any
+  content field auto-resets approval (approved questions can't silently change);
+  only APPROVED+active questions feed the exam generator (`questions_for_exam`)
+- AI practice-question import: tolerant Q:/A: parser, malformed blocks skipped
+  and counted, imports land in the review queue with traceability - never
+  auto-approved, owner-only import
+- Duplicate groundwork: punctuation/whitespace-normalized comparison within a school
+- Staff-only area (students get 403 everywhere in /questions/); school-scoped
+  list/detail/actions; admin bulk approve/reject actions
+
+Development commands unchanged; see `docs/architecture.md` section 5.7.
+
+**Recommended next step: Phase 8 — Examination Generator** (exam configuration,
+selection from approved questions, AI generation as fallback, marks/Bloom/
+topic validation with application-side arithmetic, answer key + marking scheme,
+teacher review before publication).
+
 ---
 
 # 17. Long-Term Vision

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Import from AI - Question Bank{% endblock %}
+{% block content %}
+  <h1>Import AI practice questions</h1>
+  <p class="subtitle">Imported questions enter the review queue as Pending review.
+  They are never auto-approved and only reach students after a teacher approves them.</p>
+
+  {% if generations %}
+    <ul class="resource-list">
+      {% for generation in generations %}
+        <li class="card resource-card">
+          <div class="resource-head">
+            <span class="resource-title">Practice questions{% if generation.topic %}: {{ generation.topic }}{% endif %}</span>
+            <span class="badge">{{ generation.created_at|date:"Y-m-d" }}</span>
+          </div>
+          <p class="meta">{{ generation.content|truncatechars:140 }}</p>
+          <form method="post" action="{% url 'question-import-run' %}" class="inline-form">
+            {% csrf_token %}
+            <input type="hidden" name="generation" value="{{ generation.public_id }}">
+            <button type="submit" class="btn-primary">Import into review queue</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="card notice">
+      <p>No AI practice-question generations found. Generate some in the
+      <a href="{% url 'ai-study' %}?kind=PRACTICE_QUESTIONS">study tools</a> first.</p>
+    </div>
+  {% endif %}
+{% endblock %}

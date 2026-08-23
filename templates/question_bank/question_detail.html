@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Question - Question Bank{% endblock %}
+{% block content %}
+  <h1>Question</h1>
+  <p class="subtitle">
+    {{ question.get_question_type_display }} &middot; {{ question.marks }} marks
+    &middot; {{ question.get_difficulty_display }} &middot; Bloom: {{ question.get_bloom_level_display }}
+  </p>
+
+  <div class="card">
+    <p><strong>{{ question.body }}</strong></p>
+    {% if question.options %}
+      <ul class="plain-list">
+        {% for option in question.options %}<li>{{ option }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+    <dl class="meta-list">
+      <div><dt>Topic</dt><dd>{{ question.topic }}{% if question.subtopic %} / {{ question.subtopic }}{% endif %}</dd></div>
+      {% if question.subject %}<div><dt>Subject</dt><dd>{{ question.subject }}</dd></div>{% endif %}
+      {% if question.school_class %}<div><dt>Class</dt><dd>{{ question.school_class }}</dd></div>{% endif %}
+      <div><dt>Status</dt><dd>{{ question.get_approval_status_display }}
+        {% if question.approved_by %}(by {{ question.approved_by.username }}){% endif %}</dd></div>
+      <div><dt>Author</dt><dd>{{ question.author.username }}</dd></div>
+      {% if question.source_resource %}
+        <div><dt>Source</dt><dd>
+          <a href="{{ question.source_resource.get_absolute_url }}">{{ question.source_resource.title }}</a>
+          {% if question.chapter %} &middot; {{ question.chapter.title }}{% endif %}
+          {% if question.page_number %} &middot; page {{ question.page_number }}{% endif %}
+        </dd></div>
+      {% endif %}
+      {% if question.ai_generation %}<div><dt>Origin</dt><dd>AI-generated (imported for review)</dd></div>{% endif %}
+    </dl>
+  </div>
+
+  <div class="card">
+    <h2>Answer</h2>
+    <p>{{ question.correct_answer|linebreaksbr }}</p>
+    {% if question.marking_scheme %}
+      <h2>Marking scheme</h2>
+      <p>{{ question.marking_scheme|linebreaksbr }}</p>
+    {% endif %}
+  </div>
+
+  {% if duplicates %}
+    <div class="card notice">
+      <p><strong>Possible duplicates in this school:</strong></p>
+      <ul class="plain-list">
+        {% for duplicate in duplicates %}
+          <li><a href="{% url 'question-detail' duplicate.public_id %}">{{ duplicate.body|truncatechars:90 }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if can_manage %}
+    <div class="btn-row">
+      <a class="btn-secondary" href="{% url 'question-edit' question.public_id %}">Edit</a>
+      {% if question.approval_status == "DRAFT" or question.approval_status == "REJECTED" %}
+        <form method="post" action="{% url 'question-action' question.public_id 'submit' %}" class="inline-form">
+          {% csrf_token %}<button type="submit" class="btn-secondary">Submit for review</button>
+        </form>
+      {% endif %}
+      {% if question.approval_status == "DRAFT" or question.approval_status == "PENDING_REVIEW" %}
+        <form method="post" action="{% url 'question-action' question.public_id 'approve' %}" class="inline-form">
+          {% csrf_token %}<button type="submit" class="btn-primary">Approve</button>
+        </form>
+        <form method="post" action="{% url 'question-action' question.public_id 'reject' %}" class="inline-form">
+          {% csrf_token %}
+          <input type="hidden" name="notes" value="">
+          <button type="submit" class="btn-secondary">Reject</button>
+        </form>
+      {% endif %}
+    </div>
+    {% if question.review_notes %}
+      <div class="card notice"><p>Review notes: {{ question.review_notes }}</p></div>
+    {% endif %}
+  {% endif %}
+{% endblock %}

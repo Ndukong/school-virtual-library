@@ -52,6 +52,7 @@ documents/         Extraction pipeline, chunks, job queue, worker command
 ai/                AI provider abstraction (chat: Groq default; Gemini/NIM
                    backups), usage logging, RAG + study-tool orchestration
 search/            Keyword + semantic + hybrid retrieval
+question_bank/     Questions, metadata, approval workflow, AI import
 templates/         Project-level templates (base, login, dashboards)
 static/            Project-level static assets (CSS)
 docs/              Architecture and future technical documentation
@@ -117,7 +118,7 @@ meaningful boundary:
 | `documents` | Extraction pipeline, chunks, processing jobs | 3 (created) |
 | `search` | Keyword + semantic search | 4 (created; pgvector swap pending Postgres) |
 | `ai` | AI provider abstraction, RAG orchestration, usage logging | 4/5 (created) |
-| `question_bank` | Question CRUD, Bloom, marking schemes | 7 |
+| `question_bank` | Question CRUD, Bloom, marking schemes | 7 (created) |
 | `examinations` | Exam generation and validation | 8 |
 | `learning` | Student practice and progress | 9 |
 | `whatsapp` | Webhook and message handling (thin layer) | 10 |
@@ -376,6 +377,42 @@ verify with your teacher" notice; practice questions are explicitly NOT
 teacher-approved and never enter the question bank (Phase 7 owns approval
 workflow). Rate limiting is shared across ask + generate via `ai/ratelimit`
 so neither feature can bypass the cap.
+
+---
+
+## 5.7 Phase 7 Design Decisions (Question Bank)
+
+### Staff-only by design
+The whole `/questions/` area requires teacher/admin roles: answer keys must
+never reach student accounts. Students receive practice through Phase 9,
+which serves questions without answers until submission.
+
+### Approval workflow
+DRAFT -> PENDING_REVIEW -> APPROVED / REJECTED; approve is allowed from DRAFT
+or PENDING (small schools may have a single teacher), never directly from
+REJECTED. Editing any content field (body/options/answer/marks/type/
+difficulty/Bloom/topic) automatically resets status to DRAFT and clears
+approval metadata - an approved question can never silently change. The exam
+generator's single sanctioned source is `questions_for_exam(school, ...)`,
+which returns APPROVED + active + school-scoped rows only.
+
+### AI import with human gate
+`import_from_ai_generation` parses Q:/A: blocks from PRACTICE_QUESTIONS
+generations (tolerant parser; malformed blocks counted and skipped), creates
+questions as PENDING_REVIEW with full traceability (`ai_generation` FK +
+source resource/chapter inheritance), and is restricted to the generation's
+owner. Nothing auto-approves.
+
+### Bloom and duplicates
+Bloom level is editable metadata (SKILLS.md section 12), not gospel. Duplicate
+groundwork compares whitespace/punctuation-normalized bodies within a school;
+embedding-based similarity is deferred until it earns its complexity.
+
+### Validation layering
+Model `clean()` enforces cross-field rules on EVERY save (marks range 1-100,
+MCQ needs >=2 options, TF options fixed, subject/class/source school match)
+because Django validators only run in form validation - programmatic saves
+must not bypass integrity.
 
 ---
 

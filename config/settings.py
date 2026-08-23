@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "documents",
     "ai",
     "search",
+    "question_bank",
 ]
 
 # Custom user model. Must remain set before the first migration; changing it
@@ -235,6 +236,7 @@ SEARCH_MIN_SIMILARITY = 0.15
 RAG_TOP_K = 8
 RAG_MAX_CONTEXT_CHARS = 6000
 RAG_PROMPT_VERSION = "rag-v1"
+STUDY_PROMPT_VERSION = "study-v1"
 AI_RATE_LIMIT_PER_MINUTE = 10
 
 
