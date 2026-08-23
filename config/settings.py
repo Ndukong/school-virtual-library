@@ -9,6 +9,7 @@ import os
 import sys
 from pathlib import Path
 
+import dj_database_url
 from dotenv import load_dotenv
 
 # Load secrets from .env into the environment (dotenv never overrides
@@ -77,6 +78,7 @@ LOGOUT_REDIRECT_URL = "login"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -107,42 +109,21 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Database
-# Local development defaults to SQLite (zero-setup on Windows).
-# Set DATABASE_URL to a PostgreSQL URL to use PostgreSQL.
-# pgvector support (semantic search) is added in Phase 4 on PostgreSQL.
-
-from urllib.parse import urlparse
-
-
-def parse_postgresql_url(url):
-    """Parse a SQLAlchemy-style PostgreSQL URL into a Django DATABASES entry.
-
-    Accepts 'postgresql://user:password@host:port/dbname' and the legacy
-    'postgres://' scheme. Missing host/port fall back to libpq-friendly
-    defaults. Raises ValueError when required parts are absent.
-    """
-    parsed = urlparse(url.replace("postgres://", "postgresql://", 1))
-    if parsed.scheme != "postgresql":
-        raise ValueError(
-            "Unsupported DATABASE_URL scheme. Use a PostgreSQL URL "
-            "('postgresql://...') or leave DATABASE_URL unset for SQLite."
-        )
-    name = (parsed.path or "").lstrip("/")
-    if not name:
-        raise ValueError("DATABASE_URL must include a database name.")
-    return {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": name,
-        "USER": parsed.username or "",
-        "PASSWORD": parsed.password or "",
-        "HOST": parsed.hostname or "localhost",
-        "PORT": str(parsed.port) if parsed.port else "",
-    }
+# Local development defaults to SQLite (zero-setup on Windows). Set
+# DATABASE_URL to switch backends (e.g. PostgreSQL). Parsing is delegated to
+# dj-database-url so PostgreSQL options survive, including `?sslmode=require`
+# and the legacy `postgres://` scheme. CONN_MAX_AGE is env-driven.
+_DATABASE_CONN_MAX_AGE = int(os.getenv("DATABASE_CONN_MAX_AGE", "60"))
 
 
-_database_url = os.getenv("DATABASE_URL")
-if _database_url:
-    DATABASES = {"default": parse_postgresql_url(_database_url)}
+def parse_database_url(url, conn_max_age=_DATABASE_CONN_MAX_AGE):
+    """A Django DATABASES 'default' entry built from a DATABASE_URL."""
+    return dj_database_url.parse(url, conn_max_age=conn_max_age)
+
+
+_DATABASE_URL = os.getenv("DATABASE_URL")
+if _DATABASE_URL:
+    DATABASES = {"default": parse_database_url(_DATABASE_URL)}
 else:
     DATABASES = {
         "default": {

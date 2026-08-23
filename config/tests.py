@@ -1,48 +1,66 @@
 """Tests for environment-driven configuration in config.settings."""
 
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 from django.conf import settings
 from django.test import SimpleTestCase
 
-from config.settings import parse_postgresql_url
+from config.settings import parse_database_url
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-class ParsePostgresqlUrlTests(SimpleTestCase):
-    def test_full_url_is_parsed(self):
-        config = parse_postgresql_url(
-            "postgresql://school_user:s3cret@db.example.com:6543/school_library"
+class DatabaseConfigTests(SimpleTestCase):
+    def test_postgres_url_parses_including_sslmode(self):
+        config = parse_database_url(
+            "postgresql://school_user:s3cret@db.example.com:5433/school_library"
+            "?sslmode=require"
         )
         self.assertEqual(config["ENGINE"], "django.db.backends.postgresql")
         self.assertEqual(config["NAME"], "school_library")
         self.assertEqual(config["USER"], "school_user")
         self.assertEqual(config["PASSWORD"], "s3cret")
         self.assertEqual(config["HOST"], "db.example.com")
-        self.assertEqual(config["PORT"], "6543")
+        self.assertEqual(config["OPTIONS"], {"sslmode": "require"})
 
-    def test_missing_host_and_port_use_defaults(self):
-        config = parse_postgresql_url("postgresql://user:pass@/school_library")
-        self.assertEqual(config["HOST"], "localhost")
-        self.assertEqual(config["PORT"], "")
-        self.assertEqual(config["NAME"], "school_library")
-
-    def test_legacy_postgres_scheme_is_accepted(self):
-        config = parse_postgresql_url("postgres://u:p@h:5432/dbname")
+    def test_legacy_postgres_scheme_accepted(self):
+        config = parse_database_url("postgres://u:p@h/dbname")
         self.assertEqual(config["ENGINE"], "django.db.backends.postgresql")
         self.assertEqual(config["NAME"], "dbname")
 
-    def test_url_without_password_is_supported(self):
-        config = parse_postgresql_url("postgresql://u@h:5432/dbname")
-        self.assertEqual(config["USER"], "u")
-        self.assertEqual(config["PASSWORD"], "")
+    def test_conn_max_age_applied(self):
+        config = parse_database_url("postgresql://u:p@h/dbname", conn_max_age=60)
+        self.assertEqual(config["CONN_MAX_AGE"], 60)
 
-    def test_missing_database_name_raises(self):
-        with self.assertRaises(ValueError):
-            parse_postgresql_url("postgresql://u:p@h:5432/")
-        with self.assertRaises(ValueError):
-            parse_postgresql_url("postgresql://u:p@h:5432")
+    def test_sqlite_url(self):
+        config = parse_database_url("sqlite:///./db.sqlite3")
+        self.assertEqual(config["ENGINE"], "django.db.backends.sqlite3")
+        self.assertEqual(config["NAME"], "./db.sqlite3")
 
-    def test_unsupported_scheme_raises(self):
-        with self.assertRaises(ValueError):
-            parse_postgresql_url("mysql://u:p@h:3306/dbname")
+    def test_postgres_database_url_boots(self):
+        """A PostgreSQL DATABASE_URL boots the settings module.
+
+        The settings module must construct the PostgreSQL backend entry
+        without error when DATABASE_URL is set; a live server is not needed
+        (no connection is opened at import time).
+        """
+        env = dict(os.environ)
+        env["DATABASE_URL"] = "postgresql://u:p@localhost:5432/school?sslmode=disable"
+        result = subprocess.run(
+            [sys.executable, "-c",
+             "import config.settings as s; "
+             "print(s.DATABASES['default']['ENGINE'])"],
+            env=env,
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("postgresql", result.stdout)
 
 
 class AuthConfigurationTests(SimpleTestCase):
