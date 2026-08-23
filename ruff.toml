@@ -1,0 +1,38 @@
+# Ruff configuration. Keep the rule set small enough that the gate is
+# actually green; widen it deliberately, never all at once.
+
+target-version = "py311"   # adjust to your actual Python
+line-length = 100
+
+exclude = [
+    ".venv",
+    "staticfiles",
+    "media",
+    "**/migrations/*",
+]
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes (unused imports, undefined names)
+    "I",    # import sorting
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "BLE",  # blind except
+    "DJ",   # flake8-django
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "E501",  # line length is reported by the formatter, not the linter
+]
+
+[lint.per-file-ignores]
+"config/settings_test.py" = ["F403", "F405"]  # star-import from base settings is intentional
+"**/tests*.py" = ["B011"]
+
+[lint.isort]
+known-first-party = [
+    "accounts", "ai", "classes", "common", "config", "documents",
+    "examinations", "learning", "library", "pwa", "question_bank",
+    "reports", "schools", "search", "students", "subjects", "teachers",
+]

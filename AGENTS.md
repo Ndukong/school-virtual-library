@@ -1,882 +1,280 @@
-# AGENTS.md
-# School Virtual Library — AI Development Instructions
-
-## 1. Purpose
-
-This file is the persistent operating contract for AI coding agents working on the School Virtual Library project.
-
-The project is a school-controlled digital learning platform for secondary-school students and teachers. It combines:
-
-- Digital textbooks and educational resources
-- Semantic/keyword search
-- Retrieval-Augmented Generation (RAG)
-- AI tutoring and study-note generation
-- Question bank management
-- Examination and marking-scheme generation
-- Student practice
-- WhatsApp access
-- Responsive web/PWA access
-- Teacher and administrator tools
-
-The long-term objective is to make approved school learning resources searchable and usable through a reliable AI-assisted learning environment.
-
----
-
-## 2. Agent Roles
-
-### Lead Developer — DeepSeek V4 Flash
-
-The lead agent owns:
-
-- Overall architecture
-- Django/backend implementation
-- Database design
-- APIs
-- Authentication and authorization
-- Library/document subsystem
-- Document processing
-- RAG/search
-- AI provider abstraction
-- Question bank
-- Examination generation
-- WhatsApp backend integration
-- Complex debugging
-- Production-readiness
-
-Only the lead developer should normally make architectural changes.
-
-### Reviewer / QA / UI Specialist — Big Pickle
-
-The reviewer is an independent second pair of eyes.
-
-Responsibilities:
-
-- Code review
-- Security review
-- Test review
-- UI/UX review
-- Mobile/PWA review
-- Accessibility review
-- Performance observations
-- Documentation review
-- Adversarial testing
-- Regression testing
-
-The reviewer should NOT rewrite working architecture merely because it would personally implement it differently.
-
-By default, the reviewer reports problems rather than modifying the project.
-
----
-
-## 3. Agent Coordination
-
-Do not allow two agents to modify the same codebase simultaneously.
-
-Preferred workflow:
-
-```text
-Lead implements
-      ↓
-Tests
-      ↓
-Git commit
-      ↓
-Reviewer audits
-      ↓
-Review report
-      ↓
-Lead fixes
-      ↓
-Tests
-      ↓
-Git commit
-```
-
-Each completed phase must have a Git checkpoint.
-
-Suggested commit naming:
-
-```text
-phase-00-architecture
-phase-01-core-platform
-phase-02-digital-library
-phase-03-document-processing
-phase-04-semantic-search
-phase-05-ai-librarian
-phase-06-ai-study-tools
-phase-07-question-bank
-phase-08-examination-generator
-phase-09-student-practice
-phase-10-whatsapp
-phase-11-pwa
-phase-12-analytics
-```
-
-Never rewrite history unless explicitly instructed.
-
----
-
-## 4. Golden Rules
-
-1. Inspect existing code before changing it.
-2. Do not assume a file is safe to replace.
-3. Preserve working functionality.
-4. Do not introduce unnecessary dependencies.
-5. Never hard-code secrets.
-6. Never bypass authentication to make a feature work.
-7. Never weaken permissions as a shortcut.
-8. Use proper Django migrations for schema changes.
-9. Add tests for meaningful new functionality.
-10. Do not claim a feature is complete until it has been tested.
-11. Prefer maintainable code over clever code.
-12. Keep business logic out of templates.
-13. Put complex domain operations into services/modules.
-14. Use background jobs for expensive operations.
-15. Keep AI-provider-specific code behind an abstraction layer.
-16. Treat uploaded documents as untrusted input.
-17. Never fabricate AI citations, page numbers, quotations, or sources.
-18. Never expose private student data to unauthorized users.
-19. Respect copyright and licensing restrictions.
-20. Do not add future features prematurely.
-21. Do not make architectural changes silently.
-22. Keep documentation synchronized with implementation.
-
----
-
-## 5. Current Phase Protocol
-
-Before beginning work:
-
-1. Read this file.
-2. Read `README.md`.
-3. Read `SKILLS.md`.
-4. Inspect the repository.
-5. Determine the current phase from the repository and Git history.
-6. Inspect recent commits.
-7. Check existing tests.
-8. Identify known issues.
-9. Only then make a plan.
-
-Do not restart the project from scratch merely because the existing implementation is imperfect.
-
----
-
-## 6. Phase Completion Protocol
-
-At the end of every phase:
-
-```text
-PHASE:
-STATUS: COMPLETE / INCOMPLETE
-
-Implemented:
-- ...
-
-Tests executed:
-- ...
-
-Test results:
-- ...
-
-Known issues:
-- ...
-
-Security considerations:
-- ...
-
-Database/migrations:
-- ...
-
-Documentation updated:
-- ...
-
-Git commit:
-- ...
-
-Recommended next step:
-- ...
-```
-
-A phase is not COMPLETE if critical tests fail.
-
----
-
-## 7. Architecture
-
-Preferred stack:
-
-- Python
-- Django
-- Django REST Framework where APIs are needed
-- PostgreSQL
-- pgvector for vector search
-- Redis
-- Celery or an equivalent background-job system
-- Object storage for large documents
-- Responsive HTML/CSS/JavaScript
-- PWA support
-- Configurable AI provider
-- WhatsApp Business Platform/API
-
-Keep the architecture modular.
-
-Suggested Django apps:
-
-```text
-config/
-accounts/
-schools/
-students/
-teachers/
-classes/
-subjects/
-library/
-documents/
-search/
-ai/
-question_bank/
-examinations/
-learning/
-whatsapp/
-notifications/
-reports/
-common/
-```
-
-Do not create an app unless it has a meaningful boundary.
-
----
-
-## 8. Core Domain Model
-
-The system should conceptually contain:
-
-```text
-School
- ├── Users
- ├── Classes
- ├── Subjects
- ├── Students
- ├── Teachers
- └── Resources
-
-Resource
- ├── Book
- ├── Notes
- ├── Past Paper
- ├── Marking Scheme
- └── Other educational documents
-
-Book
- ├── Chapters
- │    └── Sections
- │         └── Document chunks
- └── Metadata
-
-DocumentChunk
- ├── text
- ├── page number
- ├── metadata
- └── embedding
-
-Question
- ├── topic
- ├── subtopic
- ├── Bloom level
- ├── difficulty
- ├── marks
- ├── answer
- └── marking scheme
-
-Examination
- ├── configuration
- ├── questions
- ├── answer key
- └── marking scheme
-
-LearningActivity
- ├── book access
- ├── AI usage
- ├── practice
- └── progress
-```
-
-Use foreign keys, constraints and indexes appropriately.
-
-Use UUIDs for externally exposed identifiers where useful.
-
----
-
-## 9. Authentication and Authorization
-
-Roles:
-
-### Administrator
-Full school-level management.
-
-### Teacher
-Authorized teaching, library, question-bank and examination functions.
-
-### Student
-Only permitted learning resources and student functionality.
-
-Use Django groups/permissions or a well-designed role system.
-
-Do not scatter role checks throughout templates and views.
-
-Prefer centralized permission classes/policies.
-
-Test both allowed and denied access.
-
----
-
-## 10. Library Rules
-
-Resources must contain useful metadata, including where applicable:
-
-- title
-- author
-- publisher
-- edition
-- ISBN
-- subject
-- class/form
-- curriculum
-- language
-- description
-- publication year
-- uploader
-- access policy
-- licensing status
-- processing status
-
-Possible licensing statuses:
-
-```text
-OWNED
-LICENSED
-OPEN_ACCESS
-PUBLIC_DOMAIN
-TEACHER_CREATED
-SCHOOL_CREATED
-UNKNOWN
-```
-
-The application must not encourage unauthorized distribution of copyrighted material.
-
----
-
-## 11. Document Processing
-
-Pipeline:
-
-```text
-Upload
- ↓
-Validate
- ↓
-Store original
- ↓
-Extract text
- ↓
-OCR if necessary
- ↓
-Detect structure
- ↓
-Chunk
- ↓
-Generate embeddings
- ↓
-Index
- ↓
-READY
-```
-
-Processing states should include:
-
-```text
-UPLOADED
-VALIDATING
-EXTRACTING
-OCR_PROCESSING
-CHUNKING
-EMBEDDING
-READY
-FAILED
-```
-
-Document processing must be asynchronous for expensive jobs.
-
-The original document must never be modified during processing.
-
-Store extraction results separately.
-
----
-
-## 12. RAG Rules
-
-Use Retrieval-Augmented Generation for library-grounded answers.
-
-Pipeline:
-
-```text
-Question
- ↓
-Identify scope
- ↓
-Retrieve relevant chunks
- ↓
-Filter by permissions/metadata
- ↓
-Rank
- ↓
-Construct context
- ↓
-Generate response
- ↓
-Attach citations
-```
-
-Supported scopes:
-
-- General AI
-- Whole school library
-- Subject
-- Class/form
-- Book
-- Chapter
-- Section
-
-When a user asks about a selected book, retrieval must prioritize that book and not silently search unrelated material.
-
-The AI must say when the selected material is insufficient.
-
-Never fabricate:
-
-- sources
-- pages
-- quotations
-- textbook claims
-
----
-
-## 13. AI Provider Abstraction
-
-Never scatter provider SDK calls across the project.
-
-Create a provider interface/service.
-
-Conceptually:
-
-```python
-class AIProvider:
-    def generate(...)
-    def embed(...)
-```
-
-Possible implementations:
-
-```text
-DeepSeekProvider
-OpenAICompatibleProvider
-LocalProvider
-MockAIProvider
-```
-
-Provider/model configuration belongs in environment/configuration.
-
-The rest of the application should not care which provider is being used.
-
----
-
-## 14. AI Cost and Reliability
-
-Implement:
-
-- caching where safe
-- token/request tracking
-- configurable models
-- retries
-- timeouts
-- rate limits
-- failure handling
-- reusable embeddings
-- background processing
-
-Do not call an embedding API every time the same document is searched.
-
-Do not send the entire textbook to an LLM for every question.
-
----
-
-## 15. Question Bank
-
-Questions should support:
-
-- subject
-- class/form
-- topic
-- subtopic
-- type
-- difficulty
-- marks
-- Bloom level
-- source
-- chapter
-- page where available
-- answer
-- marking scheme
-- author
-- approval status
-
-Question types:
-
-- MCQ
-- True/False
-- Short Structural Question
-- Structured Question
-- Grouped Structural Question
-- Essay
-- Calculation
-- Practical
-- Other configurable types
-
-Prefer approved questions before generating new ones.
-
----
-
-## 16. Examination Generation
-
-Teachers must specify:
-
-- subject
-- class
-- topics
-- marks
-- duration
-- question types
-- difficulty
-- Bloom distribution
-- source scope
-
-The system should:
-
-1. Select approved questions where possible.
-2. Generate new questions only when needed.
-3. Avoid duplicates.
-4. Validate marks.
-5. Validate topic coverage.
-6. Validate Bloom distribution.
-7. Validate difficulty.
-8. Generate answers.
-9. Generate marking scheme.
-10. Require teacher review.
-
-Never automatically publish an AI-generated examination.
-
----
-
-## 17. Bloom Taxonomy
-
-Support:
-
-- Knowledge
-- Comprehension
-- Application
-- Analysis
-- Synthesis
-- Evaluation
-
-Allow configurable distributions.
-
-The system should report actual versus requested distribution.
-
----
-
-## 18. Student Learning
-
-Students should be able to:
-
-- browse resources
-- search
-- read
-- bookmark
-- ask AI
-- generate revision notes where permitted
-- practice questions
-- receive explanations
-- view their own progress
-
-Do not expose private analytics to other students.
-
----
-
-## 19. WhatsApp
-
-WhatsApp is an interface, not the database.
-
-Architecture:
-
-```text
-WhatsApp
- ↓
-Webhook
- ↓
-Django
- ↓
-Authentication
- ↓
-Library / AI / Question Bank
- ↓
-Response
-```
-
-Do not duplicate business logic in the WhatsApp module.
-
-Use account linking rather than trusting phone numbers blindly.
-
-Verify webhooks.
-
-Rate-limit requests.
-
-Do not expose student records through unauthorized WhatsApp sessions.
-
----
-
-## 20. PWA / Mobile
-
-The student UI is mobile-first.
-
-Prioritize:
-
-- low bandwidth
-- fast loading
-- large touch targets
-- readable typography
-- minimal JavaScript
-- responsive document reading
-- efficient image loading
-- caching where safe
-
-Primary navigation:
-
-```text
-Home
-Library
-Search
-Practice
-AI Tutor
-Profile
-```
-
----
-
-## 21. Security
-
-Always consider:
-
-- authentication
-- authorization
-- CSRF
-- XSS
-- SQL injection
-- file upload attacks
-- malicious PDFs
-- path traversal
-- insecure direct object references
-- API abuse
-- rate limiting
-- webhook spoofing
-- secret leakage
-- private storage access
-- excessive data exposure
-
-Never trust uploaded files or client-supplied IDs.
-
-Never use user-provided filenames directly as filesystem paths.
-
----
-
-## 22. Student Privacy
-
-Minimize student data.
-
-Do not log:
-
-- passwords
-- API keys
-- unnecessary personal information
-
-Do not expose student performance publicly.
-
-Use authorization checks on every sensitive endpoint.
-
----
-
-## 23. Testing
-
-Minimum testing categories:
-
-### Unit
-Models, services, utilities.
-
-### API
-Authentication, permissions, CRUD, search, AI endpoints.
-
-### Integration
-Upload → extraction → chunking → embedding → search → RAG.
-
-### Security
-Unauthorized access and privilege escalation.
-
-### Regression
-Existing functionality after every significant change.
-
-### UI
-Critical mobile and desktop flows.
-
----
-
-## 24. Windows Development
-
-The project must remain easy to run on Windows.
-
-Provide:
-
-```text
-README.md
-.env.example
-requirements.txt or pyproject.toml
-manage.py
-```
-
-If Docker is used, provide appropriate Docker files.
-
-Document:
-
-- prerequisites
-- environment setup
-- database setup
-- migrations
-- test commands
-- development server
-- Celery/worker setup
-- Redis setup
-- AI configuration
-
----
-
-## 25. Git Discipline
-
-Before meaningful work:
-
-```bash
-git status
-git log --oneline -10
-```
-
-After meaningful work:
-
-```bash
-git diff
-python manage.py check
-python manage.py test
-git status
-```
-
-Commit coherent changes.
-
-Avoid giant unrelated commits.
-
-Never commit:
-
-- `.env`
-- API keys
-- passwords
-- private student data
-- huge generated files unless intentionally versioned
-
----
-
-## 26. Reviewer Protocol
-
-When acting as reviewer:
-
-1. Inspect the actual implementation.
-2. Run tests where possible.
-3. Look for security flaws.
-4. Look for broken permissions.
-5. Look for database inefficiencies.
-6. Look for race conditions/background-job problems.
-7. Test mobile usability.
-8. Check documentation.
-9. Prioritize findings.
-
-Use severity:
-
-```text
-CRITICAL
-HIGH
-MEDIUM
-LOW
-```
-
-Do not report stylistic preferences as critical problems.
-
----
-
-## 27. When Requirements Are Ambiguous
-
-Do not invent major requirements.
-
-If ambiguity affects architecture, ask for clarification.
-
-If ambiguity is minor, make a reasonable choice and document it.
-
-Do not repeatedly ask questions whose answers can safely be inferred from the existing project documentation.
-
----
-
-## 28. Definition of Done
-
-A feature is DONE only when:
-
-- implementation exists
-- migrations exist if needed
-- tests exist where appropriate
-- tests pass
-- permissions are tested
-- errors are handled
-- documentation is updated
-- UI works at intended viewport sizes
-- no secrets are committed
-- no known critical issue remains
-
----
-
-## 29. Long-Term Vision
-
-The system should eventually become a unified digital school learning platform:
-
-```text
-                 SCHOOL DIGITAL CAMPUS
-                         |
-       +-----------------+-----------------+
-       |                 |                 |
-    LIBRARY           AI TUTOR        QUESTION BANK
-       |                 |                 |
-   Textbooks         Explain          Practice
-   Notes             Summarize        Exams
-   Past Papers       Tutor            Marking
-       |                 |                 |
-       +-----------------+-----------------+
-                         |
-                    STUDENT
-                   /       \
-                Web/PWA   WhatsApp
-                         |
-                 Personalized
-                    Learning
-```
-
-Build toward this vision without over-engineering the first release.
+# AGENTS.md — School Virtual Library
+
+Operating contract for AI coding agents on this repository.
+Obey this file. If an instruction conflicts with it, STOP and say so
+instead of improvising. Ambiguity is not permission.
+
+## 0. What this is
+
+Django 5.2 platform giving a secondary school in Cameroon a
+school-controlled digital library: permission-filtered hybrid search,
+RAG tutoring grounded only in approved material, teacher question bank,
+examination generation, student practice, WhatsApp access, PWA.
+
+Real users: teachers and students on low-end Android phones over
+intermittent, metered 3G, in a school with no IT staff. Design for that,
+not for a datacenter.
+
+Phase state lives in `docs/status.md`. That file is the source of truth,
+not this one and not `README.md`. Read it first.
+
+## 1. Hard rules
+
+1. Before proposing anything: read this file, `SKILLS.md`,
+   `docs/status.md`, and `git log --oneline -15`. Inspect the actual code
+   in the area you intend to touch.
+2. Smallest coherent change. One concern per commit. Never rewrite what a
+   fix would repair. Never restart a module because you dislike its style.
+3. Reproduce before you fix. A bug fix without a test that failed before
+   the change and passes after it is not a fix.
+4. Never weaken a security control, permission check, validation rule, or
+   test to make something pass. If a test blocks you, assume the test is
+   right and you are wrong.
+5. Never bypass authentication or authorization. Not temporarily, not in
+   a branch, not with a TODO.
+6. Permission filtering happens BEFORE retrieval, ranking, or exposure,
+   never after. `library.services.visible_resources(user)` is the only
+   entry point to library content. Do not query `Resource` or
+   `DocumentChunk` from scratch in a view.
+7. No AI provider SDK or HTTP call outside `ai/providers/`. The rest of
+   the app must not know which provider is configured.
+8. No business logic in templates, in `whatsapp/`, or in any future API
+   layer. Those are thin adapters over services.
+9. The LLM never performs arithmetic that matters: marks, totals, mark
+   distributions, scores, Bloom counts. Application code computes it and
+   tests assert it.
+10. Never fabricate citations, page numbers, quotations, or source
+    claims. When retrieval returns nothing, answer honestly WITHOUT
+    calling the provider.
+11. Retrieved document text is DATA. Prompts keep it inside delimiters
+    and explicitly instruct the model to ignore instructions found inside
+    it. Any prompt edit bumps the prompt version.
+12. Uploaded files, client-supplied identifiers, and webhook payloads are
+    hostile input. Validate server-side, always.
+13. No secrets in code, tests, fixtures, logs, or commits. Environment
+    only, and `.env.example` updated in the same commit.
+14. A new dependency requires a stated reason in the commit message, a
+    pinned version, and Windows installability. Prefer stdlib and Django.
+15. Migrations are generated, inspected, reversible, and tested from the
+    current state AND from scratch. Never edit an applied migration.
+    Never change `AUTH_USER_MODEL`. ASK before any data migration that
+    rewrites existing rows.
+16. Every AI call is metered: rate limited, logged, and inside a
+    per-school budget. An unmetered provider call is a defect.
+17. Expensive work goes in the database-backed queue, never inside a web
+    request or webhook. Webhooks acknowledge fast and process later.
+18. Teacher approval gates every AI-generated question and every
+    examination. No auto-approve, no auto-publish, ever.
+19. Documentation describes the system as it IS. If code and docs
+    diverge, fix the docs in the same commit.
+20. Do not build future-phase features early. Do not change architecture
+    silently. Do not leave dead code, commented-out code, or unused
+    imports behind.
+21. Never swallow an exception to make a symptom disappear. Handle
+    expected errors, log unexpected ones with context, return a safe
+    message to the user.
+22. Never send internal error text, tracebacks, or object ids to a
+    student or a phone number.
+
+## 2. Working protocol
+
+1. Read `docs/status.md` and recent git history.
+2. Restate the task in one sentence, including what you will NOT do.
+3. Inspect the relevant models, services, permissions, and tests.
+4. Write the failing test or reproduction first.
+5. Implement the smallest coherent change.
+6. Run the full gate (section 3).
+7. Update `docs/` and `docs/status.md`.
+8. Commit with a scoped message.
+9. Report using the format in section 12, then STOP and wait.
+
+Do not batch multiple work packages into one pass. Do not start the next
+package without a go-ahead.
+
+## 3. Commands and the gate
+
+Setup:
+
+    python -m venv .venv
+    .venv\\Scripts\\activate
+    pip install -r requirements.txt -r requirements-dev.txt
+    python manage.py migrate
+    python manage.py createsuperuser
+    python manage.py create_school_admin --school "Name" --username admin1
+    python manage.py process_documents --loop
+    python manage.py runserver
+
+The gate. ALL of these pass before any work is called complete:
+
+    ruff check .
+    python manage.py check
+    python manage.py check --deploy
+    python manage.py test --settings=config.settings_test
+    pip-audit
+
+A red gate means the work is not done. Do not report success on a red
+gate. Do not silence a check to make it green.
+
+## 4. Definition of Done
+
+A change is DONE only when every line is true:
+
+- [ ] Implementation exists and the intended user workflow actually works
+- [ ] A test existed that failed before the change and passes after
+- [ ] Allowed AND denied access tested for every new endpoint
+- [ ] Cross-school and cross-user access return 404, and it is tested
+- [ ] Migrations generated, inspected, reversible, tested
+- [ ] Errors handled; nothing internal reaches the user
+- [ ] No new unmetered AI call, no new unbounded query, no new N+1
+- [ ] User-facing strings wrapped for translation, with a French entry
+- [ ] Mobile viewport (360px) checked for any UI change
+- [ ] Docs and `docs/status.md` updated
+- [ ] No secrets, no dead code, no unused imports
+- [ ] Full gate green
+
+## 5. Architecture invariants
+
+    config/          settings, urls, wsgi/asgi
+    common/          shared base models and admin helpers
+    accounts/        User (ADMIN/TEACHER/STUDENT roles), permissions.py
+    schools/ classes/ subjects/ students/ teachers/
+    library/         Resource, Book/Chapter/Section, upload, file serving
+    documents/       processing pipeline, ProcessingJob queue, chunks
+    search/          keyword / semantic / hybrid retrieval
+    ai/              providers/, rag.py, study.py, prompts.py, ratelimit.py
+    question_bank/   Question, approval workflow
+    examinations/    exam config, deterministic selection, papers
+    learning/        student practice, scoring, progress
+    whatsapp/        webhook + thin router
+    pwa/             manifest, service worker
+    reports/         analytics
+
+Invariants:
+
+- All role decisions live in `accounts/permissions.py`. Never inline a
+  role string check in a view or template.
+- All library visibility flows through `library/services.py`.
+- All retrieval flows through `search/services.py`.
+- All provider access flows through `ai/providers/`.
+- All background work flows through `documents/dispatcher.enqueue`.
+- Externally exposed identifiers are `public_id` (UUID), never a PK.
+- A new app requires a real domain boundary and prior agreement.
+
+## 6. Security baseline
+
+Non-negotiable, and each item has a test:
+
+- Refuse to boot when `DEBUG=False` and `SECRET_KEY` is the dev default
+  or `ALLOWED_HOSTS` is empty.
+- Production security settings on by default when `DEBUG=False`: SSL
+  redirect, HSTS, secure session and CSRF cookies, trusted CSRF origins,
+  proxy SSL header, nosniff, deny framing, referrer policy.
+- Uploaded PDFs are served only through controlled views, with nosniff, a
+  sandboxing CSP, same-origin resource policy, and private no-store
+  caching. `/media/` is never served directly.
+- Login is throttled and lockable, keyed on username AND IP.
+- Sessions expire on idle. Shared lab machines are assumed.
+- Rate limits are atomic cache counters, not row counts in a race.
+- Students' AI history, practice results, and progress are owner-only.
+  Teacher visibility is aggregate and non-verbatim unless a documented
+  safeguarding flow says otherwise.
+- Privileged actions are audit-logged: resource delete, permission
+  change, password reset, cross-school superuser access.
+
+## 7. Deployment reality
+
+Requirements, not preferences:
+
+- **Scanned documents are the norm.** Most material is photocopied. OCR
+  (English and French) is a first-class pipeline step, not an
+  afterthought. But never fabricate a text layer: unreadable stays
+  honestly failed.
+- **Bilingual or useless.** Anglophone and francophone sections both
+  exist. UI, AI answers, refusals, and resource metadata are
+  language-aware.
+- **Bandwidth is money.** Text-first, paginated, lazy, compressed. Show
+  data cost before any download. Never preload a textbook.
+- **Offline matters more than AI.** Opt-in per-resource offline reading
+  and offline practice with sync-on-reconnect beat any new model feature.
+- **No IT staff.** Target one LAN box on the school wifi: PostgreSQL with
+  pgvector, TLS via a reverse proxy, worker under a service manager,
+  nightly backup to an external drive, and a restore procedure that has
+  actually been executed.
+- **Timezone is Africa/Douala.** Every date-boundary query is computed in
+  local time.
+- Development must stay easy on Windows.
+
+## 8. Known defects — do not reintroduce
+
+- Class-level manager access (`Resource.chapters`) where an instance was
+  meant (`resource.chapters`). Test every resource type, not just books.
+- `requirements.txt` missing what the code needs. If a code path requires
+  a package, that package is pinned in requirements.
+- Ranking in Python after an arbitrary slice of an id-ordered queryset.
+  That silently destroys recall. Rank in the database.
+- Loading every embedding into memory per query. Vector distance is the
+  database's job.
+- LLM or retrieval work inside a webhook or web request.
+- Environment behaviour switched on `sys.argv`. Use a settings module.
+- Rate limits enforced by counting rows without a lock.
+- Silent truncation of user input. Validate and tell the user.
+- Error-path rows written to analytics tables that also feed quotas.
+
+## 9. Git
+
+Before: `git status` and `git log --oneline -15`.
+After: `git diff`, then the gate, then commit.
+
+Format: `fix(library): use instance manager for chapters on non-book pages`
+
+Scopes match app names. One concern per commit. Never rewrite history
+unless told to. Never commit `.env`, keys, student data, or the SQLite
+database.
+
+## 10. Tool discipline
+
+MCP servers are available. Use the right one and keep context lean:
+enable only what the task needs.
+
+- **postgres** — verify the real schema, EXPLAIN search queries, confirm
+  indexes exist. Read-only. Never mutate data through it.
+- **playwright / chrome-devtools** — prove the workflow. "The intended UI
+  workflow works" in the Definition of Done means you clicked it: login,
+  upload, read, ask, practice. Throttle to 3G and a 360px viewport for
+  any PWA work.
+- **context7** — look up current Django 5.2, DRF, pgvector and OCR APIs
+  instead of writing them from memory.
+- **semgrep** — run on every diff touching views, settings, file serving,
+  or auth. Findings are triaged, not ignored.
+- **git** — history and diffs for the protocol in section 2.
+- **clickup** — work packages and status. Do not put the phase log back
+  into `README.md`.
+
+Never paste secrets, `.env` contents, or student data into a tool call.
+
+## 11. When requirements are ambiguous
+
+Infer minor details from existing code and document the choice. STOP and
+ask when the ambiguity touches schema, permissions, an external
+contract, student privacy, cost, or anything irreversible. Do not ask
+questions this repository already answers.
+
+## 12. Report format
+
+After every unit of work:
+
+    TASK:
+    STATUS: done / blocked
+    Files changed:
+    Tests added (and what failed before):
+    Gate results (ruff / check / check --deploy / test / pip-audit):
+    Migrations:
+    Security impact:
+    Deliberately NOT done, and why:
+    Anything in the request I judged wrong:
+    Docs updated:
+    Commit:
+    Recommended next step:
+
+A phase is never COMPLETE while a critical test fails, the gate is red,
+or a known security issue is open.
