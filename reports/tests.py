@@ -16,6 +16,7 @@ from question_bank.services import approve_question
 from reports.services import (
     _month_start,
     ai_stats,
+    download_activity,
     library_stats,
     popular_topics,
     practice_stats,
@@ -307,3 +308,23 @@ def test_recent_days_bucket_by_local_calendar_day(self):
         dates = [row["created_at__date"] for row in rows]
         self.assertIn("2026-02-02", dates)
         self.assertIn("2026-02-01", dates)
+@override_settings(LIBRARY_DOWNLOAD_DAILY_CAP=2)
+class DownloadActivityTests(ReportTestBase):
+    def test_download_activity_aggregates_and_flags_over_cap(self):
+        resource = self.make_resource(title="Heavy doc")
+        for _ in range(3):
+            ResourceAccessEvent.objects.create(
+                resource=resource, user=self.student_a,
+                kind=ResourceAccessEvent.Kind.DOWNLOAD,
+            )
+        ResourceAccessEvent.objects.create(
+            resource=resource, user=self.teacher_a,
+            kind=ResourceAccessEvent.Kind.DOWNLOAD,
+        )
+        result = download_activity(self.school_a)
+        self.assertEqual(result["total"], 4)
+        student_row = next(r for r in result["by_user"] if r["username"] == self.student_a.username)
+        self.assertEqual(student_row["count"], 3)
+        self.assertTrue(student_row["over_cap"])
+        teacher_row = next(r for r in result["by_user"] if r["username"] == self.teacher_a.username)
+        self.assertFalse(teacher_row["over_cap"])

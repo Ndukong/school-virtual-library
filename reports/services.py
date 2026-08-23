@@ -38,6 +38,43 @@ def _month_start():
     return local_start.astimezone(ZoneInfo("UTC"))
 
 
+def _local_day_start():
+    local = _local_now()
+    return local.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(ZoneInfo("UTC"))
+
+
+def download_activity(school):
+    """Anomalous-download report: today's downloads per user (local day).
+
+    Aggregated per user for staff visibility; flags users over the daily cap
+    set in the library app (WP3 abuse control).
+    """
+    rows = (
+        ResourceAccessEvent.objects
+        .filter(
+            resource__school=school,
+            kind=ResourceAccessEvent.Kind.DOWNLOAD,
+            created_at__gte=_local_day_start(),
+        )
+        .values("user__username")
+        .annotate(count=Count("pk"))
+        .order_by("-count")[:15]
+    )
+    cap = getattr(settings, "LIBRARY_DOWNLOAD_DAILY_CAP", 50)
+    return {
+        "total": sum(row["count"] for row in rows),
+        "cap": cap,
+        "by_user": [
+            {
+                "username": row["user__username"],
+                "count": row["count"],
+                "over_cap": row["count"] > cap,
+            }
+            for row in rows
+        ],
+    }
+
+
 def library_stats(school):
     resources = Resource.objects.filter(school=school)
     access = ResourceAccessEvent.objects.filter(resource__school=school)

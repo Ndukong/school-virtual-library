@@ -3,6 +3,7 @@ from django.views.generic import TemplateView
 from accounts.permissions import AdminOrTeacherRequiredMixin
 from reports.services import (
     ai_stats,
+    download_activity,
     library_stats,
     popular_topics,
     practice_stats,
@@ -50,6 +51,7 @@ class LibraryReportView(_StatsMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         school = context["selected_school"]
         context["stats"] = library_stats(school) if school else None
+        context["downloads"] = download_activity(school) if school else None
         return context
 
 

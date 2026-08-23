@@ -53,7 +53,8 @@ class LibraryTestBase(TestCase):
 
     def make_resource(self, title="Physics Textbook", school=None, uploader=None,
                       access_policy=Resource.AccessPolicy.SCHOOL,
-                      resource_type=Resource.ResourceType.BOOK, is_active=True, with_file=True):
+                      resource_type=Resource.ResourceType.BOOK, is_active=True,
+                      with_file=True, licensing_status=Resource.LicensingStatus.OWNED):
         school = school or self.school_a
         uploader = uploader or (
             self.teacher_a if school == self.school_a else self.teacher_b
@@ -65,7 +66,7 @@ class LibraryTestBase(TestCase):
             resource_type=resource_type,
             access_policy=access_policy,
             is_active=is_active,
-            licensing_status=Resource.LicensingStatus.OWNED,
+            licensing_status=licensing_status,
         )
         if with_file:
             resource.file.save(f"{title.replace(' ', '_')}.pdf", ContentFile(pdf_bytes()), save=False)
@@ -201,7 +202,10 @@ class AccessRuleTests(LibraryTestBase):
 class LibraryViewAccessTests(LibraryTestBase):
     def setUp(self):
         super().setUp()
-        self.open_book = self.make_resource("Open Book")
+        self.open_book = self.make_resource(
+            "Open Book",
+            licensing_status=Resource.LicensingStatus.OPEN_ACCESS,
+        )
         self.teachers_only = self.make_resource(
             "Staff Papers", access_policy=Resource.AccessPolicy.TEACHERS_ONLY,
         )
@@ -379,3 +383,90 @@ class ResourceDetailPageTests(LibraryTestBase):
                     reverse("library-detail", args=[resource.public_id])
                 )
                 self.assertEqual(response.status_code, 200)
+
+class FileServingHardeningTests(LibraryTestBase):
+    """WP3: file endpoints send hardening headers and proper HTTP semantics."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.student_a)
+
+    def _download(self, resource=None):
+        resource = resource or self.make_resource()
+        return self.client.get(reverse("library-download", args=[resource.public_id]))
+
+    def test_headers_present_on_download(self):
+        response = self._download()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(response["Cross-Origin-Resource-Policy"], "same-origin")
+        self.assertEqual(response["Cache-Control"], "private, no-store")
+
+    def test_read_view_is_sandboxed_csp(self):
+        resource = self.make_resource(
+            licensing_status=Resource.LicensingStatus.OPEN_ACCESS,
+        )
+        response = self.client.get(reverse("library-read", args=[resource.public_id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Security-Policy"], "default-src 'none'; sandbox")
+
+    def test_range_request_returns_206_partial(self):
+        resource = self.make_resource()
+        response = self.client.get(
+            reverse("library-download", args=[resource.public_id]),
+            HTTP_RANGE="bytes=0-9",
+        )
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(response["Content-Range"], f"bytes 0-9/{resource.file_size}")
+        self.assertEqual(len(b"".join(response.streaming_content)), 10)
+        self.assertEqual(response["Accept-Ranges"], "bytes")
+
+    def test_etag_and_last_modified_present(self):
+        response = self._download()
+        self.assertTrue(response["ETag"].startswith('"'))
+        self.assertIn("GMT", response["Last-Modified"])
+
+    def test_invalid_range_returns_416(self):
+        resource = self.make_resource()
+        response = self.client.get(
+            reverse("library-download", args=[resource.public_id]),
+            HTTP_RANGE="bytes=abc",
+        )
+        self.assertEqual(response.status_code, 416)
+        self.assertIn("bytes */", response["Content-Range"])
+
+    def test_xaccel_mode_does_not_stream(self):
+        with override_settings(LIBRARY_XACCEL_ENABLED=True):
+            resource = self.make_resource()
+            response = self.client.get(reverse("library-download", args=[resource.public_id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response["X-Accel-Redirect"].startswith("/internal/"))
+
+    def test_watermarked_read_for_licensed_owned_only(self):
+        licensed = self.make_resource(licensing_status=Resource.LicensingStatus.LICENSED)
+        open_access = self.make_resource(
+            title="Open book",
+            licensing_status=Resource.LicensingStatus.OPEN_ACCESS,
+        )
+        licensed_page = self.client.get(reverse("library-read", args=[licensed.public_id]))
+        self.assertEqual(licensed_page.status_code, 200)
+        self.assertContains(licensed_page, "Watermarked for")
+        self.assertContains(licensed_page, reverse("library-stream", args=[licensed.public_id]))
+        raw = self.client.get(reverse("library-read", args=[open_access.public_id]))
+        self.assertTrue(raw["Content-Type"].startswith("application/pdf"))
+
+    @override_settings(LIBRARY_DOWNLOAD_PER_MINUTE=2)
+    def test_download_burst_throttled(self):
+        resource = self.make_resource()
+        url = reverse("library-download", args=[resource.public_id])
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self.assertEqual(self.client.get(url).status_code, 429)
+
+    @override_settings(LIBRARY_DOWNLOAD_DAILY_CAP=2, LIBRARY_DOWNLOAD_PER_MINUTE=100)
+    def test_download_daily_cap_enforced(self):
+        resource = self.make_resource()
+        url = reverse("library-download", args=[resource.public_id])
+        for _ in range(2):
+            self.assertEqual(self.client.get(url).status_code, 200)
+        self.assertEqual(self.client.get(url).status_code, 429)

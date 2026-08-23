@@ -241,6 +241,16 @@ LIBRARY_MAX_UPLOAD_MB = 100
 FILE_UPLOAD_MAX_MEMORY_SIZE = LIBRARY_MAX_UPLOAD_MB * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = LIBRARY_MAX_UPLOAD_MB * 1024 * 1024
 
+# Library download abuse control (WP3): per-minute burst and per-day cap,
+# enforced against ResourceAccessEvent rows. Superusers are exempt.
+LIBRARY_DOWNLOAD_PER_MINUTE = int(os.getenv("LIBRARY_DOWNLOAD_PER_MINUTE", "10"))
+LIBRARY_DOWNLOAD_DAILY_CAP = int(os.getenv("LIBRARY_DOWNLOAD_DAILY_CAP", "50"))
+
+# Reverse-proxy internal file serving (WP3): emit X-Accel-Redirect instead of
+# streaming from the app server when LIBRARY_XACCEL_ENABLED is set.
+LIBRARY_XACCEL_ENABLED = _env_bool("LIBRARY_XACCEL_ENABLED", default=False)
+LIBRARY_INTERNAL_PATH_PREFIX = os.getenv("LIBRARY_INTERNAL_PATH_PREFIX", "/internal")
+
 # Document processing. The queue is database-backed (ProcessingJob rows) so
 # it runs without Redis; a worker drains it via `process_documents`. When
 # DOCUMENTS_INLINE_PROCESSING is True, jobs run synchronously at upload time
@@ -315,6 +325,10 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = _env_bool(
     "SESSION_EXPIRE_AT_BROWSER_CLOSE",
     default=_secure_defaults["SESSION_EXPIRE_AT_BROWSER_CLOSE"],
 )
+
+# Login lockout (WP3): exponential backoff keyed on username AND IP.
+LOGIN_LOCKOUT_BASE_SECONDS = int(os.getenv("LOGIN_LOCKOUT_BASE_SECONDS", "5"))
+LOGIN_LOCKOUT_MAX_SECONDS = int(os.getenv("LOGIN_LOCKOUT_MAX_SECONDS", "300"))
 
 # Student practice (Phase 9). Answers are withheld until submission;
 # progress is strictly private to the student.

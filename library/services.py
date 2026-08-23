@@ -7,12 +7,14 @@ and future APIs share one implementation.
 """
 
 import os
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from accounts.permissions import is_admin
-from library.models import Resource
+from library.models import Resource, ResourceAccessEvent
 
 PDF_MAGIC = b"%PDF-"
 MAX_SNIFF_BYTES = 8 * 1024
@@ -80,3 +82,37 @@ def visible_resources(user):
             is_active=True, access_policy=Resource.AccessPolicy.SCHOOL
         )
     return queryset
+
+def _local_day_start():
+    """Start of today in the application timezone, as an aware UTC instant."""
+    tz = ZoneInfo(getattr(settings, "TIME_ZONE", "UTC"))
+    local = timezone.now().astimezone(tz)
+    start = local.replace(hour=0, minute=0, second=0, microsecond=0)
+    return start.astimezone(ZoneInfo("UTC"))
+
+
+def download_exceeded(user):
+    """Return 'burst' / 'daily' / None when a user exceeds download limits.
+
+    Enforced against ResourceAccessEvent (WP3) in LOCAL-time day boundaries.
+    Superusers are exempt so operational staff are never cut off.
+    """
+    if getattr(user, "is_superuser", False):
+        return None
+    minute_ago = timezone.now() - timezone.timedelta(minutes=1)
+    events = ResourceAccessEvent.objects
+    burst = events.filter(
+        user=user,
+        kind=ResourceAccessEvent.Kind.DOWNLOAD,
+        created_at__gte=minute_ago,
+    ).count()
+    if burst >= getattr(settings, "LIBRARY_DOWNLOAD_PER_MINUTE", 10):
+        return "burst"
+    daily = events.filter(
+        user=user,
+        kind=ResourceAccessEvent.Kind.DOWNLOAD,
+        created_at__gte=_local_day_start(),
+    ).count()
+    if daily >= getattr(settings, "LIBRARY_DOWNLOAD_DAILY_CAP", 50):
+        return "daily"
+    return None

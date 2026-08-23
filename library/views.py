@@ -1,16 +1,16 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
-from django.http import FileResponse, Http404
-from django.shortcuts import redirect
+from django.http import Http404, HttpResponse
+from django.shortcuts import redirect, render
 from django.views.generic import CreateView, DetailView, ListView, View
 
 from accounts.permissions import AdminOrTeacherRequiredMixin
 from documents.dispatcher import enqueue
 from documents.models import ProcessingJob
-from library.files import sanitize_original_filename
+from library.files import build_file_response, sanitize_original_filename
 from library.forms import ResourceForm
 from library.models import Resource, ResourceAccessEvent
-from library.services import user_can_read_resource, visible_resources
+from library.services import download_exceeded, user_can_read_resource, visible_resources
 
 
 def user_can_upload(user):
@@ -87,6 +87,14 @@ class _ResourceFileView(LoginRequiredMixin, View):
         resource = self.get_resource()
         if not resource.file:
             raise Http404("Resource has no attached file.")
+        if self.disposition == "attachment":
+            exceeded = download_exceeded(request.user)
+            if exceeded:
+                return HttpResponse(
+                    "Download limit reached. Please try again later.",
+                    status=429,
+                    content_type="text/plain",
+                )
         ResourceAccessEvent.objects.create(
             resource=resource,
             user=request.user,
@@ -96,27 +104,48 @@ class _ResourceFileView(LoginRequiredMixin, View):
                 else ResourceAccessEvent.Kind.DOWNLOAD
             ),
         )
-        response = FileResponse(
-            resource.file.open("rb"),
-            content_type="application/pdf",
-            as_attachment=self.disposition == "attachment",
-        )
         filename = (
             sanitize_original_filename(resource.original_filename)
             or f"{resource.public_id}.pdf"
         )
-        response["Content-Disposition"] = f'{self.disposition}; filename="{filename}"'
-        return response
+        return build_file_response(request, resource, self.disposition, filename)
 
 
 class ResourceDownloadView(_ResourceFileView):
     disposition = "attachment"
 
 
-class ResourceReadView(_ResourceFileView):
-    """Inline PDF rendering via the browser's native viewer."""
+class ResourceStreamView(_ResourceFileView):
+    """Inline stream used by the watermarked reader; same rules as Read."""
 
     disposition = "inline"
+
+
+class ResourceReadView(_ResourceFileView):
+    """Read a resource.
+
+    LICENSED/OWNED material is overlayed with a per-user watermark page that
+    embeds the stream in a sandboxed iframe; other material streams inline.
+    """
+
+    disposition = "inline"
+
+    WATERMARKED_STATUSES = (
+        Resource.LicensingStatus.LICENSED,
+        Resource.LicensingStatus.OWNED,
+    )
+
+    def get(self, request, *args, **kwargs):
+        resource = self.get_resource()
+        if not resource.file:
+            raise Http404("Resource has no attached file.")
+        if resource.licensing_status in self.WATERMARKED_STATUSES:
+            return render(
+                request,
+                "library/read_watermark.html",
+                {"resource": resource},
+            )
+        return super().get(request, *args, **kwargs)
 
 
 class ResourceUploadView(AdminOrTeacherRequiredMixin, CreateView):

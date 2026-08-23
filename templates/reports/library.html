@@ -23,6 +23,16 @@
         <ul class="plain-list">{% for row in stats.top_subjects %}<li>{{ row.subject__name }}: {{ row.count }}</li>{% endfor %}</ul>
       </div>
     {% endif %}
+    {% if downloads.by_user %}
+      <div class="card"><h2>Downloads today (top users)</h2>
+        <p class="meta">Daily cap: {{ downloads.cap }} per user. Over-cap users are flagged.</p>
+        <ul class="plain-list">
+          {% for row in downloads.by_user %}
+            <li>{{ row.username }}: {{ row.count }}{% if row.over_cap %} <span class="error">over cap</span>{% endif %}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
   {% else %}
     <div class="card notice"><p>No school selected.</p></div>
   {% endif %}
