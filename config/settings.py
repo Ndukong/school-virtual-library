@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "students",
     "teachers",
     "library",
+    "documents",
 ]
 
 # Custom user model. Must remain set before the first migration; changing it
@@ -192,6 +193,16 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Library upload limits. Uploaded files are untrusted input: the library app
 # additionally validates extension, size, and file content signature.
 LIBRARY_MAX_UPLOAD_MB = 100
+
+# Document processing. The queue is database-backed (ProcessingJob rows) so
+# it runs without Redis; a worker drains it via `process_documents`. When
+# DOCUMENTS_INLINE_PROCESSING is True, jobs run synchronously at upload time
+# (convenient for tests and tiny files; not for production).
+DOCUMENTS_INLINE_PROCESSING = False
+DOCUMENTS_CHUNK_SIZE = 1200
+DOCUMENTS_CHUNK_OVERLAP = 150
+DOCUMENTS_MAX_ATTEMPTS = 3
+DOCUMENTS_MAX_PAGES = 2000
 
 
 # Default primary key field type

@@ -696,6 +696,23 @@ Established:
 - 32 additional tests (104 total): access matrix, IDOR/cross-school denials,
   upload security incl. disguised-content rejection, pagination safety
 
+**Phase 3 — Document Processing: COMPLETE.**
+
+Established:
+
+- Database-backed job queue (`ProcessingJob`) with atomic claiming, retries,
+  and per-step deduplication - runs without Redis; worker:
+  `python manage.py process_documents` (`--loop`, `--resource-id`)
+- PDF text extraction via pypdf with page boundaries preserved
+  (`ExtractedPage`), single-page fault tolerance
+- Honest scanned-page handling: missing text layers logged as warnings;
+  fully-scanned documents FAIL with "OCR required" instead of faking success
+- Chunking (`DocumentChunk`) with size/overlap settings, page anchors, and
+  chapter/section mapping for future citations
+- Full diagnostics: `ProcessingLog` (INFO/WARNING/ERROR) surfaced in admin;
+  failures marked on the resource immediately
+- Idempotent re-runs (replace strategy) and reprocess command per resource
+
 Development commands:
 
 ```bash
@@ -706,13 +723,15 @@ pip install -r requirements.txt
 python manage.py migrate
 python manage.py createsuperuser        # platform superuser
 python manage.py create_school_admin --school "Name" --username admin1
+python manage.py process_documents      # drain processing queue (or --loop)
 python manage.py check
 python manage.py test
 python manage.py runserver
 ```
 
-**Recommended next step: Phase 3 — Document Processing** (text extraction,
-OCR fallback, chunking, background jobs, processing status tracking).
+**Recommended next step: Phase 4 — Semantic Search** (embeddings via AI
+provider abstraction, pgvector on PostgreSQL or a dev-friendly fallback,
+hybrid keyword+semantic retrieval, metadata filters).
 
 ---
 

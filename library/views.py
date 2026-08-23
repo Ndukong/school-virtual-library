@@ -5,6 +5,8 @@ from django.shortcuts import redirect
 from django.views.generic import CreateView, DetailView, ListView, View
 
 from accounts.permissions import AdminOrTeacherRequiredMixin
+from documents.dispatcher import enqueue
+from documents.models import ProcessingJob
 from library.forms import ResourceForm
 from library.models import Resource
 from library.services import sanitize_original_filename, user_can_read_resource, visible_resources
@@ -127,4 +129,8 @@ class ResourceUploadView(AdminOrTeacherRequiredMixin, CreateView):
         resource.store_file(form.cleaned_data["file"])
         resource.processing_status = Resource.ProcessingStatus.UPLOADED
         resource.save()
+        # Queue the processing pipeline (runs inline when configured). EXTRACT
+        # is enqueued first so workers process it before CHUNK.
+        enqueue(resource, ProcessingJob.Step.EXTRACT)
+        enqueue(resource, ProcessingJob.Step.CHUNK)
         return redirect(resource.get_absolute_url())

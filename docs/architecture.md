@@ -48,6 +48,7 @@ subjects/          Subject model
 students/          Student profile model
 teachers/          Teacher profile model
 library/           Resources, books, chapters/sections, upload, reader
+documents/         Extraction pipeline, chunks, job queue, worker command
 templates/         Project-level templates (base, login, dashboards)
 static/            Project-level static assets (CSS)
 docs/              Architecture and future technical documentation
@@ -110,7 +111,7 @@ meaningful boundary:
 | `accounts` | Authentication and role model | 1 (created) |
 | `schools`, `classes`, `subjects`, `students`, `teachers` | Core domain structure | 1 (created) |
 | `library` | Resources, books, chapters, sections, metadata | 2 (created; upload/reader live here) |
-| `documents` | Extraction pipeline, chunks, processing jobs | 3 |
+| `documents` | Extraction pipeline, chunks, processing jobs | 3 (created) |
 | `search` | Keyword + semantic search (pgvector) | 4 |
 | `ai` | AI provider abstraction and RAG orchestration | 4/5 |
 | `question_bank` | Question CRUD, Bloom, marking schemes | 7 |
@@ -235,6 +236,45 @@ the resource's UUID (`public_id`); integer pks stay internal.
 
 ---
 
+## 5.3 Phase 3 Design Decisions (Document Processing)
+
+### Background jobs without Redis
+Redis/Celery are not available on the development machine, so the queue is
+database-backed: `ProcessingJob` rows are claimed by workers with an atomic
+conditional UPDATE (`status=PENDING -> RUNNING`), which is safe on both
+SQLite and PostgreSQL. The worker is
+`python manage.py process_documents` (`--loop` for daemon mode, `--resource-id
+<uuid>` to re-run one resource). Task logic lives in `documents.services`;
+only the dispatcher would change if a Celery deployment appears later.
+`DOCUMENTS_INLINE_PROCESSING=True` runs jobs synchronously at upload time for
+tests and tiny deployments. Jobs retry up to `DOCUMENTS_MAX_ATTEMPTS`
+(default 3); every failure is recorded on the job and in `ProcessingLog`,
+and the resource itself shows FAILED immediately (a successful retry
+overwrites that).
+
+### Pipeline and status transitions
+Upload enqueues EXTRACT then CHUNK (order preserved by creation time).
+EXTRACT: VALIDATING -> EXTRACTING -> per-page text via pypdf into
+`ExtractedPage` rows. CHUNK: CHUNKING -> `DocumentChunk` rows -> READY.
+
+### Honesty about OCR
+Pages whose PDF text layer is empty are stored with `has_text=False` and a
+WARNING log names them; OCR itself requires Tesseract and is deliberately not
+bundled this phase (`documents.services.ocr_available()` is the integration
+point). A document with no extractable text anywhere FAILS with an explicit
+"OCR required" error instead of pretending success. Single-page extraction
+errors degrade gracefully rather than killing the run.
+
+### Chunking rules
+Target size `DOCUMENTS_CHUNK_SIZE` (1200 chars) with `DOCUMENTS_CHUNK_OVERLAP`
+(150) overlap; oversized paragraphs split at word boundaries; chunks carry
+`page_start/page_end` plus chapter/section links derived from page ranges so
+Phase 5 citations can anchor precisely. Re-running any step replaces prior
+results transactionally (idempotent). Extraction results live in separate
+tables; original files are never modified.
+
+---
+
 ## 6. Security Baseline
 
 Security-relevant choices already made in Phase 0:
@@ -304,10 +344,13 @@ Both must pass before the phase is considered complete.
 
 ## 10. Open Questions / Future Decisions
 
-- Object storage provider (`STORAGE_PROVIDER`) for large documents: Phase 3
-  (local MEDIA storage is sufficient until then).
-- AI provider of record (`AI_PROVIDER`) and models: Phase 4.
-- Celery vs. alternative background job system: Phase 3.
+- Object storage provider (`STORAGE_PROVIDER`) for large documents: when
+  production deployment nears (local MEDIA storage is sufficient for now).
+- OCR engine deployment (Tesseract binary) for scanned textbooks: required
+  before Phase 5 can answer questions from scanned books.
+- Celery/Redis adoption if concurrent workers are needed: the dispatcher is
+  designed to swap without touching task logic.
+- Embedding generation step (EMBEDDING status): Phase 4.
 - Additional upload formats (DOCX, images, EPUB): when their extraction
-  pipelines exist; PDF-only is a deliberate Phase 2 constraint.
-- Self-service admin views beyond Django admin (school dashboards): Phase 2+.
+  pipelines exist; PDF-only is a deliberate constraint.
+- Self-service admin views beyond Django admin (school dashboards): later.
