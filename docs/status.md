@@ -27,10 +27,41 @@ project; this file is what is actually true right now.
    and exception text is sent to users. (WP6)
 6. ~~No LOGGING config, no health endpoint, no CI.~~ **Partly closed in WP1**:
    LOGGING (console + rotating file) and `/healthz/` done; CI is WP10.
-7. Rate limiting counts rows without a lock; concurrent requests slip past.
-   (WP2)
+7. ~~Rate limiting counts rows without a lock; concurrent requests slip past.~~
+   **CLOSED in WP2**: atomic cache counter (per-minute bucket, TTL) with the
+   DB count as a fallback; the blanket superuser exemption is gone
+   (explicit flag, default off).
 8. ~~Silent truncation of user input.~~ **CLOSED in WP1**: questions over
    5000 chars are rejected with a user-facing message, never truncated.
+
+## Work Package 2 - production settings hardening (2026-08-23, branch
+wp/2-prod-settings)
+
+- Boot guard: `validate_run_mode` refuses to boot with DEBUG=False while
+  SECRET_KEY is the dev default or ALLOWED_HOSTS is empty. Verified by unit
+  tests AND two subprocess imports (dev-key and empty-hosts modes both
+  raise ImproperlyConfigured, exit 1). The suite keeps DEBUG=True;
+  `check --deploy` is a separate step with DEBUG=False + production env
+  values (documented in .env.example).
+- DEBUG-off security defaults (env-overridable) via `base_security_defaults`:
+  SSL redirect, HSTS 31536000 + subdomains + preload, secure session/CSRF
+  cookies, CSRF_TRUSTED_ORIGINS, proxy SSL header, nosniff, DENY framing,
+  same-origin referrer. check --deploy warnings W004/W008/W012/W016 closed.
+- TIME_ZONE=Africa/Douala; date-boundary queries audited: report month start
+  is local midnight (converted to UTC) and the AI per-day chart buckets by
+  LOCAL day. Tests cross the UTC+1 midnight boundary.
+- Rate limiting: atomic cache counter (Redis via REDIS_URL when set, locmem
+  otherwise) with DB-count fallback; AI_RATE_LIMIT_USE_CACHE selects the
+  path; AI_RATE_LIMIT_EXEMPT_SUPERUSER default False. CACHES explicit.
+- Sessions: SESSION_COOKIE_AGE, SESSION_IDLE_SECONDS + common.middleware.
+  IdleSessionMiddleware (signs out idle users), env-driven
+  SESSION_EXPIRE_AT_BROWSER_CLOSE, and accounts.logout-all ("Sign out of
+  all devices" from Profile).
+- FILE_UPLOAD_MAX_MEMORY_SIZE / DATA_UPLOAD_MAX_MEMORY_SIZE aligned to
+  LIBRARY_MAX_UPLOAD_MB.
+
+Gate: ruff 86 (none from WP2 files); check clean; check --deploy exit 0;
+324 tests OK (3 skipped); pip-audit clean.
 
 ## Work Package 1 - correctness bugs (2026-08-23, branch wp/1-correctness)
 
