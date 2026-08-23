@@ -13,16 +13,52 @@ project; this file is what is actually true right now.
 
 ## Open defects (fix before new features)
 
-1. `library/views.py` - `Resource.chapters.none()` should be
-   `resource.chapters.none()`. Non-book resource detail pages crash.
-2. `requirements.txt` is missing psycopg; the PostgreSQL path cannot boot.
+1. ~~`library/views.py` - `Resource.chapters.none()` should be
+   `resource.chapters.none()`. Non-book resource detail pages crash.~~
+   **CLOSED in WP1** (test covers every resource type).
+2. ~~`requirements.txt` is missing psycopg; the PostgreSQL path cannot boot.~~
+   **CLOSED in WP1** (pinned deps + dj-database-url; PG URL boots — settings
+   module proof).
 3. `search/services.py` - keyword ranking slices an id-ordered queryset,
-   silently dropping matches in later resources.
+   silently dropping matches in later resources. (WP5)
 4. `search/services.py` - every embedding is loaded into memory per query.
+   (WP5)
 5. `whatsapp/views.py` - retrieval and LLM work runs inside the webhook,
-   and exception text is sent to users.
-6. No LOGGING config, no health endpoint, no CI.
+   and exception text is sent to users. (WP6)
+6. ~~No LOGGING config, no health endpoint, no CI.~~ **Partly closed in WP1**:
+   LOGGING (console + rotating file) and `/healthz/` done; CI is WP10.
 7. Rate limiting counts rows without a lock; concurrent requests slip past.
+   (WP2)
+8. ~~Silent truncation of user input.~~ **CLOSED in WP1**: questions over
+   5000 chars are rejected with a user-facing message, never truncated.
+
+## Work Package 1 - correctness bugs (2026-08-23, branch wp/1-correctness)
+
+- `fix(library)`: `resource.chapters.none()`; regression test renders every
+  `Resource.ResourceType` detail page (5 types previously 500).
+- `chore(deps)`: pinned `requirements.txt` (Django 5.2.17, python-dotenv,
+  pypdf 6.16.2, psycopg[binary] 3.3.4, dj-database-url 3.1.2, gunicorn
+  26.1.0, whitenoise 6.12.0); whitenoise middleware added. pypdf 6 closes
+  the baseline GHSA; psycopg needed for the Postgres backend; gunicorn +
+  whitenoise are the Linux gunicorn/static stack (Windows-runnable,
+  functional only under gunicorn on Linux); dj-database-url replaces the
+  hand-rolled parser.
+- `refactor(config)`: DATABASES via dj-database-url (`DATABASE_URL`,
+  `DATABASE_CONN_MAX_AGE` default 60, `?sslmode=` supported). "PG
+  DATABASE_URL boots" proven by a subprocess settings-import test.
+- `refactor(config)`: `sys.argv` PASSWORD_HASHERS hack removed.
+  `--settings=config.settings_test` is the ONLY supported test command
+  (README updated) and the full suite passes under it (308 OK, 3 skipped).
+- `fix(ai)+docs`: `QuestionTooLong` validation (no more 5000-char silent
+  truncation); WhatsApp reply kept generic (no exception text leaked).
+- `feat(common)`: LOGGING (console + rotating 5MB file, LOG_LEVEL from env,
+  no request/secret content in the formatter) + `/healthz/` returning
+  database and processing-queue health.
+
+Gate: ruff 86 remaining (all paired with later packages); `manage.py check`
+clean; `check --deploy` exit 0 (security warnings to close in WP2);
+suite 308 OK (3 skipped); pip-audit **green** after pypdf>=6, setuptools
+84 and Pillow 12 upgrades.
 
 ## Work Package 0 - verification results (2026-08-23)
 
