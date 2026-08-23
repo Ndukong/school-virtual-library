@@ -103,7 +103,43 @@ class SchoolScopedAdminTests(TestCase):
             self._model_admin().has_module_permission(self._request_for(teacher))
         )
 
-    def test_module_access_allowed_for_school_admin(self):
+def test_module_access_allowed_for_school_admin(self):
         self.assertTrue(
             self._model_admin().has_module_permission(self._request_for(self.school_admin))
         )
+
+
+import json
+
+
+class HealthCheckTests(TestCase):
+    """/healthz/ exposes DB and processing-queue health without auth or data."""
+
+    def test_healthz_reports_ok_shape(self):
+        response = self.client.get("/healthz/")
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["database"], "ok")
+        self.assertIsInstance(payload["queue_pending"], int)
+
+    def test_healthz_requires_no_authentication(self):
+        self.assertEqual(self.client.get("/healthz/").status_code, 200)
+
+
+class LoggingConfigurationTests(SimpleTestCase):
+    """Inspect the base config.settings module: settings_test overrides the
+    live LOGGING, so assert against the definition settings ships."""
+
+    def test_logging_config_is_present(self):
+        from config import settings as base_settings
+
+        handlers = base_settings.LOGGING["handlers"]
+        self.assertIn("console", handlers)
+        self.assertIn("file", handlers)
+
+    def test_formatter_never_emits_request_or_secret_content(self):
+        from config import settings as base_settings
+
+        fmt = base_settings.LOGGING["formatters"]["verbose"]["format"]
+        for forbidden in ("request", "body", "headers", "secret", "key", "token"):
+            self.assertNotIn(forbidden, fmt.lower())

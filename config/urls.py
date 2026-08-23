@@ -9,7 +9,10 @@ documents are only accessible through controlled library views.
 from django.contrib import admin
 from django.urls import include, path
 
+from common.views import health_check
+
 urlpatterns = [
+    path("healthz/", health_check, name="healthz"),
     path("admin/", admin.site.urls),
     path("questions/", include("question_bank.urls")),
     path("exams/", include("examinations.urls")),

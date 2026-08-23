@@ -6,7 +6,6 @@ set DATABASE_URL to a PostgreSQL URL to switch backends (production target).
 """
 
 import os
-import sys
 from pathlib import Path
 
 import dj_database_url
@@ -151,10 +150,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Fast (insecure) hashing during test runs only; never used for real accounts.
-if len(sys.argv) > 1 and sys.argv[1] == "test":
-    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
-
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -248,6 +243,35 @@ WHATSAPP_LINK_CODE_MINUTES = int(os.getenv("WHATSAPP_LINK_CODE_MINUTES", "15"))
 # only caches the static shell; authenticated content and files are never
 # stored offline).
 PWA_ENABLED = _env_bool("PWA_ENABLED", default=True)
+
+# Logging: console + rotating file. Level from LOG_LEVEL. The verbose
+# formatter emits timestamp/logger/message only - never request bodies,
+# headers, or secrets.
+_LOG_DIR = BASE_DIR / "logs"
+_LOG_DIR.mkdir(exist_ok=True)
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {name} {funcName} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "verbose"},
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": _LOG_DIR / "svl.log",
+            "maxBytes": 5 * 1024 * 1024,
+            "backupCount": 3,
+            "formatter": "verbose",
+        },
+    },
+    "root": {"handlers": ["console", "file"], "level": LOG_LEVEL},
+}
 
 
 # Default primary key field type

@@ -525,14 +525,20 @@ Typical commands:
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
 
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py check
-python manage.py test
+python manage.py test --settings=config.settings_test
 python manage.py runserver
 ```
+
+`python manage.py test --settings=config.settings_test` is the only
+supported test command: it inherits the normal settings then forces
+offline, deterministic behaviour (fast hashing, mock AI providers, console
+WhatsApp, scratch media). Never point the suite at a real provider or a
+populated `.env`.
 
 If the project uses `pyproject.toml`, Docker, or another dependency system, follow the repository's actual configuration.
 
@@ -585,7 +591,7 @@ Before a phase is considered complete:
 
 ```bash
 python manage.py check
-python manage.py test
+python manage.py test --settings=config.settings_test
 ```
 
 Also test the actual user workflow where possible.
@@ -773,14 +779,14 @@ Development commands:
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
 
 python manage.py migrate
 python manage.py createsuperuser        # platform superuser
 python manage.py create_school_admin --school "Name" --username admin1
 python manage.py process_documents      # drain processing queue (or --loop)
 python manage.py check
-python manage.py test
+python manage.py test --settings=config.settings_test
 python manage.py runserver
 ```
 
