@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Study tools - AI Tutor{% endblock %}
+{% block content %}
+  <h1>Study tools</h1>
+  {% if error_message %}
+    <p class="error" role="alert">{{ error_message }}</p>
+  {% endif %}
+  {% if scope == "BOOK" and scope_target %}
+    <p class="subtitle">Working from the book: <strong>{{ scope_target.title }}</strong></p>
+  {% elif scope == "CHAPTER" and scope_target %}
+    <p class="subtitle">Working from the chapter: <strong>{{ scope_target.title }}</strong> ({{ scope_target.resource.title }})</p>
+  {% else %}
+    <p class="subtitle">Generated from your school library, with citations to the source material.</p>
+  {% endif %}
+
+  <form method="post" class="card auth-form">
+    {% csrf_token %}
+    <input type="hidden" name="scope" value="{{ scope }}">
+    <input type="hidden" name="book" value="{{ book_param }}">
+    <input type="hidden" name="chapter" value="{{ chapter_param }}">
+    <label for="id_kind">What do you need?</label>
+    <select name="kind" id="id_kind">
+      {% for value, label in kinds %}
+        <option value="{{ value }}" {% if selected_kind == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label for="id_topic">Focus topic (optional)</label>
+    <input type="text" name="topic" id="id_topic" placeholder="e.g. electromagnetic induction">
+    <button type="submit">Generate</button>
+  </form>
+
+  <div class="card notice">
+    <p>Materials are AI-generated study support with citations - not a replacement
+    for your teacher's notes. See all your saved materials on
+    <a href="{% url 'ai-study-mine' %}">My materials</a>.</p>
+  </div>
+{% endblock %}

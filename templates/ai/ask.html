@@ -30,7 +30,8 @@
     <div class="card notice">
       <p>Scope options: ask from the <a href="{% url 'ai-ask' %}">whole library</a>,
       or open a book or chapter in the <a href="{% url 'library-list' %}">library</a>
-      and use its AI Tutor link to focus on that material.</p>
+      and use its AI Tutor link to focus on that material. Need notes instead of
+      answers? Use the <a href="{% url 'ai-study' %}{% if book_param %}?book={{ book_param }}{% endif %}">study tools</a>.</p>
     </div>
   {% endif %}
 {% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}My study materials - AI Tutor{% endblock %}
+{% block content %}
+  <h1>My study materials</h1>
+  {% if object_list %}
+    <ul class="resource-list">
+      {% for generation in object_list %}
+        <li class="card resource-card">
+          <div class="resource-head">
+            <a class="resource-title" href="{% url 'ai-study-result' generation.public_id %}">
+              {{ generation.get_kind_display }}{% if generation.topic %}: {{ generation.topic }}{% endif %}
+            </a>
+            <span class="badge">{{ generation.created_at|date:"Y-m-d" }}</span>
+          </div>
+          <p class="meta">{{ generation.get_scope_display }}{% if generation.source_resource %} &middot; {{ generation.source_resource.title }}{% endif %}</p>
+        </li>
+      {% endfor %}
+    </ul>
+    {% if is_paginated %}
+      <nav class="pager" aria-label="Pagination">
+        {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="card notice"><p>You have not generated any study materials yet.
+      <a href="{% url 'ai-study' %}">Try the study tools</a>.</p></div>
+  {% endif %}
+{% endblock %}

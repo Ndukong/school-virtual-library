@@ -73,3 +73,48 @@ class AIInteraction(models.Model):
 
     def __str__(self):
         return f"{self.user}: {self.question[:60]}"
+
+
+class AIGeneration(models.Model):
+    """AI-generated study material (summaries, notes, questions, ...).
+
+    These are study SUPPORT artifacts, clearly AI-generated; they never enter
+    the approved question bank or replace teacher-authored content.
+    """
+
+    class Kind(models.TextChoices):
+        SUMMARY = "SUMMARY", "Summary"
+        REVISION_NOTES = "REVISION_NOTES", "Revision notes"
+        DEFINITIONS_FORMULAE = "DEFINITIONS_FORMULAE", "Definitions and formulae"
+        PRACTICE_QUESTIONS = "PRACTICE_QUESTIONS", "Practice questions"
+
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ai_generations"
+    )
+    school = models.ForeignKey(
+        "schools.School", on_delete=models.PROTECT, null=True, blank=True, related_name="ai_generations"
+    )
+    kind = models.CharField(max_length=24, choices=Kind.choices)
+    scope = models.CharField(max_length=12, choices=AIInteraction.Scope.choices)
+    source_resource = models.ForeignKey(
+        "library.Resource", on_delete=models.SET_NULL, null=True, blank=True, related_name="ai_generations"
+    )
+    topic = models.CharField(max_length=300, blank=True)
+    content = models.TextField()
+    cited_chunk_ids = models.JSONField(default=list, blank=True)
+    retrieved_count = models.PositiveSmallIntegerField(default=0)
+    model = models.CharField(max_length=120, blank=True)
+    prompt_version = models.CharField(max_length=20, blank=True)
+    used_provider = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["school", "kind"]),
+        ]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} for {self.user} ({self.scope})"

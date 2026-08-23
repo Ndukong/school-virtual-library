@@ -44,6 +44,7 @@
       <a class="btn-primary" href="{% url 'library-read' resource.public_id %}" target="_blank" rel="noopener">Read</a>
       <a class="btn-secondary" href="{% url 'library-download' resource.public_id %}">Download</a>
       <a class="btn-secondary" href="{% url 'ai-ask' %}?book={{ resource.public_id }}">Ask AI Tutor about this book</a>
+      <a class="btn-secondary" href="{% url 'ai-study' %}?book={{ resource.public_id }}&kind=REVISION_NOTES">Study tools</a>
     </div>
   {% endif %}
 {% endblock %}

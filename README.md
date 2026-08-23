@@ -788,6 +788,23 @@ python manage.py runserver
 notes, definitions/formulae, practice-question generation from selected
 material).
 
+**Phase 6 — AI Study Tools: COMPLETE.**
+
+Established:
+
+- Study tool suite: Summary, Revision notes, Definitions & formulae,
+  Practice questions - all generated FROM retrieved school material with
+  [n] citations and the same injection-resistant versioned prompts
+- No focus topic => the scope's chunks are used directly in document order
+  ("summarize this book" means this book); with a topic, ranked hybrid search runs
+- Zero-material requests answered honestly without spending provider tokens
+- Outputs saved as owner-only `AIGeneration` records ("My materials" list),
+  persistently labeled "AI-generated study support - verify with your teacher"
+- Shared rate limiter across Ask + Generate (`ai/ratelimit.py`)
+
+Entry points: `/ai/study/`, per-book "Study tools" button on resource pages,
+cross-links from the AI Tutor ask page.
+
 ---
 
 # 17. Long-Term Vision

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ generation.get_kind_display }} - AI Tutor{% endblock %}
+{% block content %}
+  <h1>{{ generation.get_kind_display }}</h1>
+  <p class="meta">
+    {{ generation.get_scope_display }}
+    {% if generation.source_resource %} &middot; from {{ generation.source_resource.title }}{% endif %}
+    {% if generation.topic %} &middot; focus: {{ generation.topic }}{% endif %}
+    &middot; {{ generation.created_at|date:"Y-m-d H:i" }}
+  </p>
+
+  <div class="card notice">
+    <p><strong>AI-generated study support.</strong> Verify important facts with your teacher or the source material.</p>
+  </div>
+
+  <div class="card">
+    <p>{{ generation.content|linebreaksbr }}</p>
+    {% if not generation.used_provider %}
+      <p class="meta">Generated without the AI service (no matching material or service unavailable).</p>
+    {% endif %}
+  </div>
+
+  {% if sources %}
+    <section class="card" aria-label="Sources">
+      <h2>Sources used</h2>
+      <ul class="plain-list">
+        {% for chunk in sources %}
+          <li>
+            <a href="{{ chunk.resource.get_absolute_url }}">{{ chunk.resource.title }}</a>
+            {% if chunk.page_start %}
+              &middot; {% if chunk.page_end and chunk.page_end != chunk.page_start %}pages {{ chunk.page_start }}&ndash;{{ chunk.page_end }}{% else %}page {{ chunk.page_start }}{% endif %}
+            {% endif %}
+            {% if chunk.chapter %} &middot; {{ chunk.chapter.title }}{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  <div class="btn-row">
+    <a class="btn-secondary" href="{% url 'ai-study' %}">Generate another</a>
+    <a class="btn-secondary" href="{% url 'ai-study-mine' %}">My materials</a>
+  </div>
+{% endblock %}

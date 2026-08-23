@@ -1,6 +1,6 @@
 # Architecture
 
-Status: current as of Phase 5 (AI Librarian).
+Status: current as of Phase 6 (AI study tools).
 
 ---
 
@@ -50,7 +50,7 @@ teachers/          Teacher profile model
 library/           Resources, books, chapters/sections, upload, reader
 documents/         Extraction pipeline, chunks, job queue, worker command
 ai/                AI provider abstraction (chat: Groq default; Gemini/NIM
-                   backups), usage logging, RAG orchestration
+                   backups), usage logging, RAG + study-tool orchestration
 search/            Keyword + semantic + hybrid retrieval
 templates/         Project-level templates (base, login, dashboards)
 static/            Project-level static assets (CSS)
@@ -351,6 +351,31 @@ audit and school-level analytics later; answer pages are owner-only
 (`AI_RATE_LIMIT_PER_MINUTE`, default 10) guards API cost; superusers are
 exempt. Provider outages produce a friendly recorded answer rather than a
 500.
+
+---
+
+## 5.6 Phase 6 Design Decisions (AI Study Tools)
+
+### One engine, four kinds
+`ai/study.py` generates Summary / Revision notes / Definitions & formulae /
+Practice questions from the SAME grounded pipeline as the AI Librarian:
+permission-filtered retrieval -> numbered blocks -> versioned prompt
+(`STUDY_PROMPT_VERSION=study-v1`) -> citation validation. Zero retrieval
+produces an honest "no material" result WITHOUT calling the provider.
+Outputs are stored as `AIGeneration` rows, owner-only viewable.
+
+### Retrieval: topic vs whole-scope
+With a focus topic, ranked hybrid search runs as usual. WITHOUT a topic,
+"summarize this book" must mean the book itself: the scope's chunks are
+taken directly in document order instead of racing a similarity query -
+deterministic and true to user intent.
+
+### Human-in-the-loop labeling
+Every generated artifact carries a persistent "AI-generated study support -
+verify with your teacher" notice; practice questions are explicitly NOT
+teacher-approved and never enter the question bank (Phase 7 owns approval
+workflow). Rate limiting is shared across ask + generate via `ai/ratelimit`
+so neither feature can bypass the cap.
 
 ---
 
