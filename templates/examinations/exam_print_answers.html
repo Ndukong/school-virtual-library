@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ exam.title }} - Answer key and marking scheme</title>
+  <style>
+    body { font-family: Georgia, "Times New Roman", serif; margin: 2rem auto; max-width: 46rem; color: #111; }
+    header { border-bottom: 2px solid #111; margin-bottom: 1rem; padding-bottom: 0.5rem; }
+    h1 { font-size: 1.3rem; margin: 0; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #444; padding: 0.5rem; vertical-align: top; text-align: left; }
+    .marks { white-space: nowrap; }
+    @media print {
+      .no-print { display: none; }
+      a { color: #111; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>{{ exam.title }}</h1>
+    <p class="meta">Answer key &amp; marking scheme &middot;
+      {{ exam.subject.name }} &middot; Total: {{ exam.total_marks }} marks</p>
+  </header>
+
+  <table>
+    <thead>
+      <tr><th>#</th><th>Answer</th><th>Marking scheme</th><th class="marks">Marks</th></tr>
+    </thead>
+    <tbody>
+      {% for slot in slots %}
+        <tr>
+          <td>{{ slot.position }}</td>
+          <td>{{ slot.question.correct_answer|linebreaksbr }}
+            {% if slot.question.options %}<br><em>Correct option: {{ slot.question.correct_answer }}</em>{% endif %}
+          </td>
+          <td>{{ slot.question.marking_scheme|default:"-"|linebreaksbr }}</td>
+          <td class="marks">{{ slot.marks }}</td>
+        </tr>
+      {% endfor %}
+      <tr><td colspan="3"><strong>Total</strong></td><td class="marks"><strong>{{ exam.total_marks }}</strong></td></tr>
+    </tbody>
+  </table>
+
+  <p class="no-print"><a href="{% url 'exam-detail' exam.public_id %}">Back to exam</a></p>
+</body>
+</html>

@@ -53,6 +53,7 @@ ai/                AI provider abstraction (chat: Groq default; Gemini/NIM
                    backups), usage logging, RAG + study-tool orchestration
 search/            Keyword + semantic + hybrid retrieval
 question_bank/     Questions, metadata, approval workflow, AI import
+examinations/      Exam assembly from approved questions, validation, printing
 templates/         Project-level templates (base, login, dashboards)
 static/            Project-level static assets (CSS)
 docs/              Architecture and future technical documentation
@@ -119,7 +120,7 @@ meaningful boundary:
 | `search` | Keyword + semantic search | 4 (created; pgvector swap pending Postgres) |
 | `ai` | AI provider abstraction, RAG orchestration, usage logging | 4/5 (created) |
 | `question_bank` | Question CRUD, Bloom, marking schemes | 7 (created) |
-| `examinations` | Exam generation and validation | 8 |
+| `examinations` | Exam generation and validation | 8 (created) |
 | `learning` | Student practice and progress | 9 |
 | `whatsapp` | Webhook and message handling (thin layer) | 10 |
 | `notifications` | User notifications | 12 |
@@ -413,6 +414,36 @@ Model `clean()` enforces cross-field rules on EVERY save (marks range 1-100,
 MCQ needs >=2 options, TF options fixed, subject/class/source school match)
 because Django validators only run in form validation - programmatic saves
 must not bypass integrity.
+
+---
+
+## 5.8 Phase 8 Design Decisions (Examination Generator)
+
+### The LLM never does arithmetic
+Selection and totals are computed by application code only. `select_questions`
+runs a deterministic greedy pass over APPROVED bank items (topic relevance
+first, then larger marks) and either reaches the requested total EXACTLY or
+fails loudly with the achievable amount - a paper with wrong arithmetic can
+never exist. The SKILLS example (5+5+10+20=40) is covered by tests.
+
+### Approved questions only; AI as candidate-suggester
+Exams assemble exclusively from `questions_for_exam` output. When the bank
+falls short, "Ask AI to suggest candidates" generates PENDING_REVIEW
+questions into the Question Bank review queue (grounded prompt, INSUFFICIENT
+handled honestly) - the exam itself is untouched until a teacher approves the
+candidates and re-assembles. Nothing AI-generated ever lands on a paper
+without human approval (AGENTS.md section 16.10).
+
+### Validation report
+`validate_exam` hard-fails on: totals mismatch, non-approved/foreign slots,
+duplicate question text, uncovered requested topics. Bloom distribution is
+reported actual-vs-requested with warnings beyond 15% deviation - advisory,
+not blocking (teacher judgment per SKILLS section 12).
+
+### Workflow and output
+DRAFT -> READY_FOR_REVIEW (requires passing validation) -> PUBLISHED
+(re-validates). Printable paper and answer-key/marking-scheme views are
+staff-only, print-styled, and re-check permissions server-side.
 
 ---
 

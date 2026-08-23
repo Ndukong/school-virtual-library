@@ -827,6 +827,29 @@ Established:
 
 Development commands unchanged; see `docs/architecture.md` section 5.7.
 
+**Phase 8 — Examination Generator: COMPLETE.**
+
+Established:
+
+- Exam configuration (title/subject/class/duration/total marks/topics/types/
+  Bloom distribution) with a stored config snapshot for actual-vs-requested reports
+- Deterministic selection from APPROVED bank questions only - exact-total
+  enforcement with honest shortfall errors; the LLM never does arithmetic
+  and never places questions on a paper (5+5+10+20=40 covered by tests)
+- Validation: totals arithmetic, approvals, school scoping, duplicates,
+  topic coverage; Bloom actual-vs-requested advisory report
+- Workflow: Draft -> Ready for review (validation must pass) -> Published
+  (re-validated); AI "suggest-fill" only proposes PENDING_REVIEW candidates
+  into the Question Bank - teacher approval gates every AI item
+- Printable examination paper + answer key/marking scheme (staff-only,
+  print-styled)
+
+Development commands unchanged; see `docs/architecture.md` section 5.8.
+
+**Recommended next step: Phase 9 — Student Practice** (quizzes from approved
+questions without answers until submission, scoring, explanations, personal
+progress - never exposing other students' results).
+
 **Recommended next step: Phase 8 — Examination Generator** (exam configuration,
 selection from approved questions, AI generation as fallback, marks/Bloom/
 topic validation with application-side arithmetic, answer key + marking scheme,

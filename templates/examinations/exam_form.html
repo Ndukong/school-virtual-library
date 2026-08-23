@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Create exam - Examinations{% endblock %}
+{% block content %}
+  <h1>Create exam</h1>
+  <p class="subtitle">Questions are selected from APPROVED bank items only.
+  Totals are validated arithmetically by the application - never by the AI.</p>
+  {% if form.non_field_errors %}
+    <div class="error" role="alert">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+  {% endif %}
+  <form method="post" class="card upload-form">
+    {% csrf_token %}
+    {{ form.school.label_tag }}{{ form.school }}{{ form.school.errors }}
+    <label for="{{ form.title.id_for_label }}">Title *</label>
+    {{ form.title }}{{ form.title.errors }}
+    <label for="{{ form.subject.id_for_label }}">Subject *</label>
+    {{ form.subject }}{{ form.subject.errors }}
+    <label for="{{ form.school_class.id_for_label }}">Class</label>
+    {{ form.school_class }}
+    <label for="{{ form.duration_minutes.id_for_label }}">Duration (minutes) *</label>
+    {{ form.duration_minutes }}{{ form.duration_minutes.errors }}
+    <label for="{{ form.total_marks.id_for_label }}">Total marks *</label>
+    {{ form.total_marks }}{{ form.total_marks.errors }}
+    <label for="{{ form.topics.id_for_label }}">Topics to cover (comma-separated)</label>
+    {{ form.topics }}{{ form.topics.errors }}
+    <fieldset><legend>Question types allowed</legend>
+      {{ form.question_types }}
+      {% if form.question_types.errors %}<p class="error">{{ form.question_types.errors }}</p>{% endif %}
+    </fieldset>
+    <label for="{{ form.bloom_distribution.id_for_label }}">Bloom distribution (optional)</label>
+    {{ form.bloom_distribution }}{{ form.bloom_distribution.errors }}
+    <label for="{{ form.instructions.id_for_label }}">Instructions</label>
+    {{ form.instructions }}
+    <button type="submit">Assemble exam</button>
+  </form>
+{% endblock %}

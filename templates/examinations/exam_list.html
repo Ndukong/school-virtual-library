@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Examinations{% endblock %}
+{% block content %}
+  <h1>Examinations</h1>
+  <div class="card">
+    <a class="btn-link" href="{% url 'exam-create' %}">Create exam</a>
+  </div>
+  {% if object_list %}
+    <ul class="resource-list">
+      {% for exam in object_list %}
+        <li class="card resource-card">
+          <div class="resource-head">
+            <a class="resource-title" href="{% url 'exam-detail' exam.public_id %}">{{ exam.title }}</a>
+            <span class="badge">{{ exam.get_status_display }}</span>
+          </div>
+          <p class="meta">{{ exam.subject.name }} &middot; {{ exam.total_marks }} marks
+            &middot; {{ exam.duration_minutes }} min
+            {% if exam.school_class %} &middot; {{ exam.school_class.name }}{% endif %}</p>
+        </li>
+      {% endfor %}
+    </ul>
+    {% if is_paginated %}
+      <nav class="pager">
+        {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="card notice"><p>No exams yet.</p></div>
+  {% endif %}
+{% endblock %}

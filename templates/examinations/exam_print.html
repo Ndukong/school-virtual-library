@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ exam.title }} - Examination paper</title>
+  <style>
+    body { font-family: Georgia, "Times New Roman", serif; margin: 2rem auto; max-width: 46rem; color: #111; }
+    header { border-bottom: 2px solid #111; margin-bottom: 1rem; padding-bottom: 0.5rem; }
+    h1 { font-size: 1.3rem; margin: 0; }
+    .meta { font-size: 0.95rem; }
+    ol li { margin-bottom: 1rem; }
+    .marks { float: right; font-weight: bold; }
+    .instructions { font-style: italic; }
+    @media print {
+      .no-print { display: none; }
+      a { color: #111; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>{{ exam.title }}</h1>
+    <p class="meta">
+      {{ exam.subject.name }}{% if exam.school_class %} &mdash; {{ exam.school_class.name }}{% endif %}
+      &middot; Total: {{ exam.total_marks }} marks &middot; Time allowed: {{ exam.duration_minutes }} minutes
+    </p>
+    {% if exam.instructions %}<p class="instructions">{{ exam.instructions|linebreaksbr }}</p>{% endif %}
+  </header>
+
+  <ol start="1" style="list-style-type: decimal;">
+    {% for slot in slots %}
+      <li value="{{ slot.position }}">
+        <span class="marks">[{{ slot.marks }}]</span>
+        {{ slot.question.body|linebreaksbr }}
+        {% if slot.question.options %}
+          <ul style="list-style-type: upper-alpha;">
+            {% for option in slot.question.options %}<li>{{ option }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ol>
+
+  <p class="no-print"><a href="{% url 'exam-detail' exam.public_id %}">Back to exam</a></p>
+</body>
+</html>

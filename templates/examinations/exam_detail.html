@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ exam.title }} - Examinations{% endblock %}
+{% block content %}
+  <h1>{{ exam.title }}</h1>
+  <p class="subtitle">
+    {{ exam.subject.name }}{% if exam.school_class %} &middot; {{ exam.school_class.name }}{% endif %}
+    &middot; {{ exam.total_marks }} marks &middot; {{ exam.duration_minutes }} minutes
+    &middot; Status: <strong>{{ exam.get_status_display }}</strong>
+  </p>
+
+  {% if report.errors %}
+    <div class="card notice">
+      <p><strong>Validation issues:</strong></p>
+      <ul class="plain-list">
+        {% for error in report.errors %}<li>{{ error }}</li>{% endfor %}
+      </ul>
+    </div>
+  {% elif report.ok %}
+    <div class="card notice"><p>All checks passed: totals, approvals, topic coverage and duplicates are clean.</p></div>
+  {% endif %}
+
+  {% if report.bloom_report %}
+    <div class="card">
+      <h2>Bloom distribution (requested vs actual)</h2>
+      <ul class="plain-list">
+        {% for label, entry in report.bloom_report.items %}
+          <li>{{ label }}: requested ~{{ entry.requested_pct }}%, actual {{ entry.actual_pct }}% ({{ entry.count }})
+            {% if entry.warning %}<span class="error">{{ entry.warning }}</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <section class="card">
+    <h2>Questions</h2>
+    {% if slots %}
+      <ol class="plain-list">
+        {% for slot in slots %}
+          <li>
+            <a href="{% url 'question-detail' slot.question.public_id %}">{{ slot.question.body|truncatechars:100 }}</a>
+            &middot; {{ slot.marks }} marks &middot; {{ slot.question.topic }}
+            {% if slot.question.approval_status != "APPROVED" %}<span class="error">(no longer approved!)</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p>No questions selected yet.</p>
+    {% endif %}
+  </section>
+
+  <div class="btn-row">
+    <form method="post" action="{% url 'exam-action' exam.public_id 'reassemble' %}" class="inline-form">
+      {% csrf_token %}<button type="submit" class="btn-secondary">Re-assemble from bank</button>
+    </form>
+    <form method="post" action="{% url 'exam-action' exam.public_id 'ready' %}" class="inline-form">
+      {% csrf_token %}<button type="submit" class="btn-primary">Validate &amp; mark ready</button>
+    </form>
+    {% if exam.status == "READY_FOR_REVIEW" or exam.status == "PUBLISHED" %}
+      <a class="btn-secondary" href="{% url 'exam-print' exam.public_id %}" target="_blank" rel="noopener">Print paper</a>
+      <a class="btn-secondary" href="{% url 'exam-print-answers' exam.public_id %}" target="_blank" rel="noopener">Print answer key</a>
+    {% endif %}
+  </div>
+  {% if exam.status == "DRAFT" %}
+    <div class="card notice" style="margin-top:0.75rem;">
+      <form method="post" action="{% url 'exam-action' exam.public_id 'suggest-fill' %}" class="inline-form">
+        {% csrf_token %}
+        <label for="id_suggest">Short of marks?</label>
+        <button type="submit" class="btn-secondary">Ask AI to suggest candidate questions</button>
+      </form>
+      <p class="meta">Suggestions enter the Question Bank review queue - approve them there, then re-assemble.</p>
+    </div>
+  {% endif %}
+  {% if exam.status == "READY_FOR_REVIEW" %}
+    <div class="card notice" style="margin-top:0.75rem;">
+      <form method="post" action="{% url 'exam-action' exam.public_id 'publish' %}" class="inline-form">
+        {% csrf_token %}
+        <button type="submit" class="btn-primary">Publish exam</button>
+      </form>
+    </div>
+  {% endif %}
+{% endblock %}

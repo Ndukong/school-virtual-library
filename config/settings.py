@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "ai",
     "search",
     "question_bank",
+    "examinations",
 ]
 
 # Custom user model. Must remain set before the first migration; changing it
