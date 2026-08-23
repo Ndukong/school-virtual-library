@@ -138,6 +138,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "common.middleware.IdleSessionMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -235,6 +236,10 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Library upload limits. Uploaded files are untrusted input: the library app
 # additionally validates extension, size, and file content signature.
 LIBRARY_MAX_UPLOAD_MB = 100
+# Keep Django's request/memory ceilings aligned with the library cap so a
+# single upload larger than the cap is rejected before file handling begins.
+FILE_UPLOAD_MAX_MEMORY_SIZE = LIBRARY_MAX_UPLOAD_MB * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = LIBRARY_MAX_UPLOAD_MB * 1024 * 1024
 
 # Document processing. The queue is database-backed (ProcessingJob rows) so
 # it runs without Redis; a worker drains it via `process_documents`. When
@@ -277,6 +282,39 @@ RAG_MAX_CONTEXT_CHARS = 6000
 RAG_PROMPT_VERSION = "rag-v1"
 STUDY_PROMPT_VERSION = "study-v1"
 AI_RATE_LIMIT_PER_MINUTE = 10
+# Atomic cache-counter rate limiting (WP2) - a Redis cache is shared across
+# processes; locmem is per-process. Set False to keep the DB-count path
+# (settings_test pins this off for deterministic tests).
+AI_RATE_LIMIT_USE_CACHE = _env_bool("AI_RATE_LIMIT_USE_CACHE", default=True)
+# Superusers are NOT exempt by default; opt in explicitly per deployment.
+AI_RATE_LIMIT_EXEMPT_SUPERUSER = _env_bool("AI_RATE_LIMIT_EXEMPT_SUPERUSER", default=False)
+
+# Cache. Redis via REDIS_URL when configured; locmem otherwise. Rate limiting
+# uses cache counters (atomic) with the DB count as a fallback.
+REDIS_URL = os.getenv("REDIS_URL", "")
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "KEY_PREFIX": "svl",
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "svl-local",
+        }
+    }
+
+# Sessions (AGENTS section 6: idle expiry, shared lab machines assumed).
+SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", "7200"))
+SESSION_IDLE_SECONDS = int(os.getenv("SESSION_IDLE_SECONDS", "1800"))
+SESSION_EXPIRE_AT_BROWSER_CLOSE = _env_bool(
+    "SESSION_EXPIRE_AT_BROWSER_CLOSE",
+    default=_secure_defaults["SESSION_EXPIRE_AT_BROWSER_CLOSE"],
+)
 
 # Student practice (Phase 9). Answers are withheld until submission;
 # progress is strictly private to the student.

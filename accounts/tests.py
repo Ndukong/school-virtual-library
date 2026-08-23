@@ -1,7 +1,7 @@
 from django.contrib.admin import site as default_admin_site
 from django.contrib.auth.models import AnonymousUser
 from django.core.management import CommandError, call_command
-from django.test import RequestFactory, TestCase
+from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
 
 from accounts.admin import UserAdmin
@@ -270,4 +270,36 @@ class CreateSchoolAdminCommandTests(TestCase):
                 school="Hill High School",
                 username="weakpw",
                 password="123",
-            )
+)
+
+
+class LogoutAllDevicesTests(TestCase):
+    def setUp(self):
+        self.school = make_school("Logout School")
+        self.user_a = make_user("la", User.Role.STUDENT, self.school)
+        self.user_b = make_user("lb", User.Role.STUDENT, self.school)
+
+    def test_signs_out_other_sessions_keeps_current_and_other_users(self):
+        client_a1 = Client()
+        client_a1.force_login(self.user_a)
+        client_a1.get(reverse("profile"))
+        client_a2 = Client()
+        client_a2.force_login(self.user_a)
+        client_a2.get(reverse("profile"))
+        client_b = Client()
+        client_b.force_login(self.user_b)
+        client_b.get(reverse("profile"))
+
+        response = client_a1.post(reverse("logout-all"))
+        self.assertEqual(response.status_code, 302)
+
+        self.assertEqual(client_a1.get(reverse("profile")).status_code, 200)  # current kept
+        self.assertEqual(client_a2.get(reverse("profile")).status_code, 302)  # other device out
+        self.assertEqual(client_b.get(reverse("profile")).status_code, 200)   # other user intact
+
+    def test_logout_all_requires_post_and_login(self):
+        client = Client()
+        response = client.get(reverse("logout-all"))
+        self.assertIn(response.status_code, (302, 405))
+        client.force_login(self.user_a)
+        self.assertEqual(client.get(reverse("logout-all")).status_code in (302, 405), True)

@@ -19,7 +19,7 @@ from ai.rag import (
     sanitize_citations,
     sources_for,
 )
-from ai.ratelimit import RateLimited
+from ai.ratelimit import RateLimited, enforce
 from documents.models import ChunkEmbedding
 from documents.services import chunk_resource, embed_resource_chunks, extract_text
 from library.models import BookChapter, Resource
@@ -332,3 +332,52 @@ class AskViewTests(RagTestBase):
         response = client.get(reverse("ai-answer", args=[interaction.public_id]))
         self.assertContains(response, "Sources used")
         self.assertContains(response, self.resource.title)
+
+
+@override_settings(AI_RATE_LIMIT_USE_CACHE=True, AI_RATE_LIMIT_PER_MINUTE=3)
+class CacheRateLimitTests(TestCase):
+    """Atomic cache-counter limiting (Work Package 2) exercised directly."""
+
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        self.school = School.objects.create(name="Cache School")
+        self.user = User.objects.create_user(
+            "cacheuser", password=PASSWORD, role=User.Role.STUDENT, school=self.school
+        )
+        self.superuser = User.objects.create_user(
+            "cacheroot", password=PASSWORD, is_superuser=True
+        )
+
+    def test_blocked_after_exact_limit(self):
+        for _ in range(3):
+            enforce(self.user)
+        with self.assertRaises(RateLimited):
+            enforce(self.user)
+
+    def test_superuser_not_exempt_by_default(self):
+        for _ in range(3):
+            enforce(self.superuser)
+        with self.assertRaises(RateLimited):
+            enforce(self.superuser)
+
+    def test_superuser_exempt_when_flag_enabled(self):
+        with override_settings(AI_RATE_LIMIT_EXEMPT_SUPERUSER=True):
+            for _ in range(5):
+                enforce(self.superuser)
+
+    def test_falls_back_to_db_count_when_cache_unavailable(self):
+        from ai.models import AIInteraction
+
+        with override_settings(AI_RATE_LIMIT_PER_MINUTE=2):
+            AIInteraction.objects.create(
+                user=self.user, school=self.school, question="q", answer="a"
+            )
+            AIInteraction.objects.create(
+                user=self.user, school=self.school, question="q2", answer="a2"
+            )
+            with mock.patch("ai.ratelimit.cache") as broken:
+                broken.incr.side_effect = RuntimeError("cache backend down")
+                with self.assertRaises(RateLimited):
+                    enforce(self.user)

@@ -49,6 +49,11 @@ WHATSAPP_APP_SECRET = ""
 
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
+# Rate limiting uses the deterministic DB-count path in the suite; the atomic
+# cache-counter path is exercised by dedicated tests at ai.tests with
+# override_settings(AI_RATE_LIMIT_USE_CACHE=True).
+AI_RATE_LIMIT_USE_CACHE = False
+
 # --- Isolation ------------------------------------------------------------
 # Uploads during tests go to a scratch directory, never the real media/.
 # Safe to delete at any time.

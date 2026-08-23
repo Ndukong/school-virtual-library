@@ -11,4 +11,5 @@ urlpatterns = [
     path("dashboard/teacher/", views.TeacherDashboardView.as_view(), name="dashboard-teacher"),
     path("dashboard/student/", views.StudentDashboardView.as_view(), name="dashboard-student"),
     path("profile/", views.ProfileView.as_view(), name="profile"),
+    path("logout-all/", views.LogoutAllDevicesView.as_view(), name="logout-all"),
 ]

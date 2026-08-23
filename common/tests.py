@@ -1,9 +1,13 @@
 """Phase 0 configuration smoke tests plus Phase 1 admin scoping tests."""
 
+import json
+import time
+
 from django.apps import apps
 from django.conf import settings
 from django.contrib.admin import site as default_admin_site
-from django.test import RequestFactory, SimpleTestCase, TestCase
+from django.test import Client, RequestFactory, SimpleTestCase, TestCase, override_settings
+from django.urls import reverse
 
 from accounts.models import User
 from classes.admin import SchoolClassAdmin
@@ -109,9 +113,6 @@ def test_module_access_allowed_for_school_admin(self):
         )
 
 
-import json
-
-
 class HealthCheckTests(TestCase):
     """/healthz/ exposes DB and processing-queue health without auth or data."""
 
@@ -143,3 +144,38 @@ class LoggingConfigurationTests(SimpleTestCase):
         fmt = base_settings.LOGGING["formatters"]["verbose"]["format"]
         for forbidden in ("request", "body", "headers", "secret", "key", "token"):
             self.assertNotIn(forbidden, fmt.lower())
+
+
+class IdleSessionMiddlewareTests(TestCase):
+    def setUp(self):
+        self.school = School.objects.create(name="Idle School")
+        self.user = User.objects.create_user(
+            "idle_user", password="ComplexPass123!",
+            role=User.Role.STUDENT, school=self.school,
+        )
+
+    def _profile(self):
+        return reverse("profile")
+
+    def test_active_session_stamped_and_retained(self):
+        client = Client()
+        client.force_login(self.user)
+        first = client.get(self._profile())
+        self.assertEqual(first.status_code, 200)
+        with override_settings(SESSION_IDLE_SECONDS=1800):
+            second = client.get(self._profile())
+        self.assertEqual(second.status_code, 200)  # within window, still in
+
+    def test_idle_session_is_signed_out(self):
+        client = Client()
+        client.force_login(self.user)
+        client.get(self._profile())
+        session = client.session
+        session["_last_seen"] = int(time.time()) - 7200
+        session.save()
+        with override_settings(SESSION_IDLE_SECONDS=1800):
+            response = client.get(self._profile())
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login/", response.url)
+        # Session is gone: the next request is anonymous again.
+        self.assertEqual(client.get(self._profile()).status_code, 302)

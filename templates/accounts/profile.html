@@ -27,5 +27,9 @@
         <li><a href="{% url 'exam-list' %}">Exams</a></li>
       {% endif %}
     </ul>
+    <form method="post" action="{% url 'logout-all' %}" class="inline-form">
+      {% csrf_token %}
+      <button type="submit" class="btn-secondary">Sign out of all devices</button>
+    </form>
   </div>
 {% endblock %}

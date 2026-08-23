@@ -1,6 +1,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView as DjangoLoginView
 from django.shortcuts import redirect
+from django.utils import timezone
 from django.views.generic import TemplateView, View
 
 from accounts.permissions import (
@@ -77,3 +78,27 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         context["student_profile"] = getattr(user, "student_profile", None)
         context["teacher_profile"] = getattr(user, "teacher_profile", None)
         return context
+
+
+class LogoutAllDevicesView(LoginRequiredMixin, View):
+    """End every session for the current user except this one."""
+
+    def post(self, request):
+        from django.contrib import messages
+        from django.contrib.sessions.models import Session
+
+        user_identifier = str(request.user.pk)
+        now = timezone.now()
+        deleted = 0
+        for session in Session.objects.filter(expire_date__gt=now):
+            if session.session_key == request.session.session_key:
+                continue
+            try:
+                payload = session.get_decoded()
+            except Exception:  # noqa: BLE001 - skip corrupted sessions
+                continue
+            if str(payload.get("_auth_user_id", "")) == user_identifier:
+                session.delete()
+                deleted += 1
+        messages.success(request, f"Signed out {deleted} other session(s).")
+        return redirect("profile")
