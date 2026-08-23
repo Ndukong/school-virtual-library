@@ -1,10 +1,43 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from accounts.models import User
+from accounts.models import LoginFailure, LoginLock, User
 from accounts.permissions import is_admin
+from accounts.services import reset_user_locks
 from students.admin import StudentInline
 from teachers.admin import TeacherInline
+
+
+@admin.action(description="Unlock login for selected users")
+def unlock_login(modeladmin, request, queryset):
+    for user in queryset:
+        reset_user_locks(user.username)
+
+
+@admin.register(LoginLock)
+class LoginLockAdmin(admin.ModelAdmin):
+    list_display = ("username", "ip", "attempts", "locked_until", "updated_at")
+    search_fields = ("username", "ip")
+    readonly_fields = ("username", "ip", "attempts", "locked_until", "updated_at")
+    actions = [unlock_login]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(LoginFailure)
+class LoginFailureAdmin(admin.ModelAdmin):
+    list_display = ("username", "ip", "created_at")
+    search_fields = ("username", "ip")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(User)

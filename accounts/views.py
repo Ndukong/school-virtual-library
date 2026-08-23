@@ -11,6 +11,7 @@ from accounts.permissions import (
     is_admin,
     is_teacher,
 )
+from accounts.services import check_login_lock, client_ip, record_failed_login, reset_login_state
 
 
 class HomeView(View):
@@ -27,8 +28,39 @@ class HomeView(View):
 
 
 class LoginView(DjangoLoginView):
+    """Login with WP3 lockout: exponential backoff keyed on username+IP.
+
+    A user inside a lock window never reaches the authentication backend and
+    sees a plain "too many attempts" message instead of a validity verdict.
+    Successes clear the lock's failures for that key.
+    """
+
     template_name = "registration/login.html"
     redirect_authenticated_user = True
+
+    def post(self, request, *args, **kwargs):
+        username = (request.POST.get("username") or "").strip()
+        ip = client_ip(request)
+        blocked, wait = check_login_lock(username, ip)
+        if blocked:
+            self._blocked = True
+            form = self.get_form()
+            form.add_error(None, f"Too many failed attempts. Try again in {wait} second(s).")
+            return self.form_invalid(form)
+        return super().post(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        user = form.get_user()
+        reset_login_state(user.username, client_ip(self.request))
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        if not getattr(self, "_blocked", False):
+            record_failed_login(
+                (self.request.POST.get("username") or "").strip(),
+                client_ip(self.request),
+            )
+        return super().form_invalid(form)
 
 
 class AdminDashboardView(AdminRequiredMixin, TemplateView):

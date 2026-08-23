@@ -1,12 +1,14 @@
 from django.contrib.admin import site as default_admin_site
 from django.contrib.auth.models import AnonymousUser
 from django.core.management import CommandError, call_command
-from django.test import Client, RequestFactory, TestCase
+from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.admin import UserAdmin
-from accounts.models import User
+from accounts.models import LoginFailure, LoginLock, User
 from accounts.permissions import has_role, is_admin, is_student, is_teacher
+from accounts.services import check_login_lock, reset_user_locks
 from schools.models import School
 
 PASSWORD = "ComplexPass123!"
@@ -155,7 +157,7 @@ class AuthFlowTests(TestCase):
             reverse("login"), {"username": "adm", "password": "wrong-password"}
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "didn't match")
+        self.assertContains(response, "Please enter a correct username")
 
     def test_login_redirects_to_role_dashboard(self):
         response = self.client.post(
@@ -303,3 +305,53 @@ class LogoutAllDevicesTests(TestCase):
         self.assertIn(response.status_code, (302, 405))
         client.force_login(self.user_a)
         self.assertEqual(client.get(reverse("logout-all")).status_code in (302, 405), True)
+
+@override_settings(LOGIN_LOCKOUT_BASE_SECONDS=5)
+class LoginLockoutTests(TestCase):
+    def setUp(self):
+        self.school = make_school("Lock School")
+        self.user = make_user("lockstudent", User.Role.STUDENT, self.school)
+
+    def test_first_failure_locks_then_blocks_before_auth(self):
+        client = Client()
+        first = client.post(reverse("login"), {"username": "lockstudent", "password": "wrong"})
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(LoginFailure.objects.count(), 1)
+        second = client.post(reverse("login"), {"username": "lockstudent", "password": "wrong"})
+        self.assertEqual(second.status_code, 200)
+        self.assertContains(second, "Too many failed attempts")
+        self.assertEqual(LoginFailure.objects.count(), 1)  # blocked, not re-audited
+        blocked, wait = check_login_lock("lockstudent", "127.0.0.1")
+        self.assertTrue(blocked)
+        self.assertGreaterEqual(wait, 1)
+
+    def test_lock_is_keyed_per_ip(self):
+        client = Client()
+        client.post(reverse("login"), {"username": "lockstudent", "password": "wrong"})
+        blocked_a, wait_a = check_login_lock("lockstudent", "127.0.0.1")
+        blocked_b, wait_b = check_login_lock("lockstudent", "203.0.113.7")
+        self.assertTrue(blocked_a)
+        self.assertFalse(blocked_b)
+
+    def test_success_login_clears_lock_and_resets_wait(self):
+
+        LoginFailure.objects.create(username="lockstudent", ip="127.0.0.1")
+        # Stale, already-expired lock: must not block, then gets cleared.
+        LoginLock.objects.create(
+            username="lockstudent", ip="127.0.0.1", attempts=12,
+            locked_until=timezone.now() - timezone.timedelta(minutes=1),
+        )
+        client = Client()
+        response = client.post(reverse("login"), {"username": "lockstudent", "password": PASSWORD})
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(LoginLock.objects.filter(username="lockstudent", ip="127.0.0.1").exists())
+        self.assertFalse(LoginFailure.objects.filter(username="lockstudent", ip="127.0.0.1").exists())
+
+    def test_admin_unlock_clears_all_keys(self):
+
+        LoginFailure.objects.create(username="lockstudent", ip="127.0.0.1")
+        LoginLock.objects.create(username="lockstudent", ip="127.0.0.1",
+                                 attempts=3, locked_until=timezone.now() + timezone.timedelta(minutes=5))
+        reset_user_locks("lockstudent")
+        blocked, _ = check_login_lock("lockstudent", "127.0.0.1")
+        self.assertFalse(blocked)
