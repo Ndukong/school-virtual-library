@@ -24,6 +24,32 @@ project; this file is what is actually true right now.
 6. No LOGGING config, no health endpoint, no CI.
 7. Rate limiting counts rows without a lock; concurrent requests slip past.
 
+## Work Package 0 - verification results (2026-08-23)
+
+Every finding in packages 1-3 was reproduced before fixing. Verdict per item:
+
+| Item | Finding | Verdict |
+|---|---|---|
+| WP1.1 | `Resource.chapters.none()` on non-book detail | CONFIRMED - AttributeError, detail page returns 500 |
+| WP1.2 | requirements missing psycopg/dj-database-url/gunicorn/whitenoise | CONFIRMED - hand parser drops `?sslmode=`; CONN_MAX_AGE=0 |
+| WP1.3 | argv hasher hack in settings.py | CONFIRMED - present; suite passes under settings_test (303 OK) |
+| WP1.4 | dead `_candidate_chunks` import | ALREADY FIXED by baseline ruff sweep |
+| WP1.4b | silent 5000-char question truncation | CONFIRMED - 32400->5000 stored |
+| WP1.5 | no LOGGING, no /healthz | CONFIRMED - /healthz/ 404; no LOGGING dict in settings |
+| WP2.1 | no boot guard | CONFIRMED - imports with dev key + DEBUG=False |
+| WP2.2 | security headers off on DEBUG=False | CONFIRMED - framework defaults only; X_FRAME_OPTIONS already DENY by default |
+| WP2.3 | TIME_ZONE=UTC | CONFIRMED - not Africa/Douala |
+| WP2.4 | row-count rate limit + superuser exemption | CONFIRMED - no cache.incr; unconditional exemption |
+| WP2.5 | no idle middleware / env session age | CONFIRMED - framework defaults |
+| WP2.6 | upload memory mismatch | CONFIRMED - 2.5MB vs LIBRARY_MAX_UPLOAD_MB=100 |
+| WP3.1 | file-view headers | PARTIAL - nosniff present (middleware default); CSP/CORP/Cache-Control missing |
+| WP3.2 | Range/ETag | CONFIRMED - no Accept-Ranges/ETag/Last-Modified |
+| WP3.3 | download throttle/cap/watermark | CONFIRMED - none exist |
+| WP3.4 | login throttle/lockout | CONFIRMED - 7 failed logins -> 200 each |
+| WP3.5 | admin temp-password reset | CONFIRMED - no such flow |
+
+Baseline gate (2026-08-23): ruff 156->86 remaining (71 autofixed in `style: apply ruff`); `manage.py check` clean; `check --deploy` exits 0 with W004/W008/W009/W012/W016 warnings open; test suite `--settings=config.settings_test` 303 OK (3 skipped); **pip-audit red at baseline** - pypdf 5.9.0 (GHSA-jm82-fx9c-mx94, fix 6.13.3) and venv setuptools 63.2.0 (multiple). pypdf pin must move to >=6 in WP1.
+
 ## Not started
 
 OCR · French/i18n · offline PWA caching · pgvector · DRF API · RAG eval ·
