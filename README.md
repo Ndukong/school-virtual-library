@@ -846,6 +846,25 @@ Established:
 
 Development commands unchanged; see `docs/architecture.md` section 5.8.
 
+**Phase 9 — Student Practice: COMPLETE.**
+
+Established:
+
+- Student-only `/practice/` area (teachers/admins 403; anonymous → login)
+- Self-serve quizzes drawn from APPROVED school questions with subject/topic
+  filters and honest "no material" errors; published exams practicable as
+  papers (draft/foreign/other-class rejected)
+- Answers withheld until submission; MCQ/TF auto-graded, structured items
+  self-marked against the teacher's scheme afterwards; re-submission blocked
+- Results page shows explanations, model answers and marking schemes only
+  post-submission; cross-student access is always 404
+- Strictly private progress: per-subject averages, recent scores, weak-topic
+  recommendations linking to library search and AI revision notes
+
+**Recommended next step: Phase 10 — WhatsApp** (webhook with signature
+verification, account linking rather than phone-number trust, thin message
+handlers over existing services: search/AI/practice, rate limiting).
+
 **Recommended next step: Phase 9 — Student Practice** (quizzes from approved
 questions without answers until submission, scoring, explanations, personal
 progress - never exposing other students' results).

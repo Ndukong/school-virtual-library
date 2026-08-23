@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Quiz - Practice{% endblock %}
+{% block content %}
+  <h1>Practice quiz</h1>
+  {% if attempt.source_type == "PUBLISHED_EXAM" and attempt.exam %}
+    <p class="subtitle">{{ attempt.exam.title }} &middot; {{ attempt.possible_marks }} marks</p>
+  {% else %}
+    <p class="subtitle">{{ attempt.responses.count }} questions{% if attempt.subject %} &middot; {{ attempt.subject.name }}{% endif %}{% if attempt.topic_filter %} &middot; {{ attempt.topic_filter }}{% endif %}</p>
+  {% endif %}
+  <p class="meta">Answer everything, then submit. Model answers appear after submission.</p>
+
+  <form method="post" action="{% url 'attempt-submit' attempt.public_id %}">
+    {% csrf_token %}
+    {% for response in responses %}
+      <div class="card">
+        <p><strong>{{ forloop.counter }}.</strong> [{{ response.question.marks }}] {{ response.question.body|linebreaksbr }}</p>
+        {% if response.question.options %}
+          {% for option in response.question.options %}
+            <label style="display:block;">
+              <input type="radio" name="answer_{{ response.pk }}" value="{{ option }}" required>
+              {{ option }}
+            </label>
+          {% endfor %}
+        {% else %}
+          <textarea name="answer_{{ response.pk }}" rows="3" style="width:100%;"
+                    placeholder="Type your answer..."></textarea>
+        {% endif %}
+      </div>
+    {% endfor %}
+    <button type="submit">Submit answers</button>
+  </form>
+{% endblock %}

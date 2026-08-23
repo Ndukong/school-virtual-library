@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "search",
     "question_bank",
     "examinations",
+    "learning",
 ]
 
 # Custom user model. Must remain set before the first migration; changing it
@@ -239,6 +240,11 @@ RAG_MAX_CONTEXT_CHARS = 6000
 RAG_PROMPT_VERSION = "rag-v1"
 STUDY_PROMPT_VERSION = "study-v1"
 AI_RATE_LIMIT_PER_MINUTE = 10
+
+# Student practice (Phase 9). Answers are withheld until submission;
+# progress is strictly private to the student.
+PRACTICE_DEFAULT_SIZE = 5
+PRACTICE_MAX_SIZE = 20
 
 
 # Default primary key field type

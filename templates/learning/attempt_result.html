@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Results - Practice{% endblock %}
+{% block content %}
+  <h1>Results</h1>
+  <p class="subtitle">
+    {{ attempt.earned_marks }} / {{ attempt.possible_marks }} marks
+    &middot; {{ attempt.score_percent }}%
+    {% if attempt.exam %} &middot; {{ attempt.exam.title }}{% endif %}
+  </p>
+
+  {% for response in responses %}
+    <div class="card">
+      <p>
+        <strong>{{ forloop.counter }}.</strong> [{{ response.question.marks }}] {{ response.question.body|linebreaksbr }}
+      </p>
+      {% if response.is_correct == True %}
+        <p class="meta"><strong style="color:darkgreen;">Correct</strong>
+          {% if response.self_marked %}(self-marked){% endif %} &middot; +{{ response.awarded_marks }}</p>
+      {% elif response.is_correct == False %}
+        <p class="error"><strong>Incorrect</strong>
+          {% if response.self_marked %}(self-marked){% endif %} &middot; 0</p>
+      {% else %}
+        <p class="meta"><strong>Awaiting your marking</strong> - compare with the scheme below.</p>
+        <form method="post" action="{% url 'response-self-mark' response.pk %}" class="inline-form btn-row">
+          {% csrf_token %}
+          <button type="submit" name="correct" value="true" class="btn-secondary">I got it right</button>
+          <button type="submit" name="correct" value="false" class="btn-secondary">I got it wrong</button>
+        </form>
+      {% endif %}
+      <p><strong>Your answer:</strong> {{ response.given_answer|default:"(blank)"|linebreaksbr }}</p>
+      {% if response.question.question_type == "MCQ" or response.question.question_type == "TRUE_FALSE" %}
+        <p><strong>Correct answer:</strong> {{ response.question.correct_answer }}</p>
+      {% else %}
+        <p><strong>Model answer:</strong> {{ response.question.correct_answer|linebreaksbr }}</p>
+        {% if response.question.marking_scheme %}
+          <p class="meta"><strong>Marking scheme:</strong> {{ response.question.marking_scheme|linebreaksbr }}</p>
+        {% endif %}
+      {% endif %}
+    </div>
+  {% endfor %}
+
+  <div class="btn-row">
+    <a class="btn-primary" href="{% url 'practice-progress' %}">My progress</a>
+    <a class="btn-secondary" href="{% url 'practice-home' %}">Practice again</a>
+  </div>
+{% endblock %}

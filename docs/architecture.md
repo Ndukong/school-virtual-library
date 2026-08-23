@@ -54,6 +54,7 @@ ai/                AI provider abstraction (chat: Groq default; Gemini/NIM
 search/            Keyword + semantic + hybrid retrieval
 question_bank/     Questions, metadata, approval workflow, AI import
 examinations/      Exam assembly from approved questions, validation, printing
+learning/          Student practice: quizzes, scoring, private progress
 templates/         Project-level templates (base, login, dashboards)
 static/            Project-level static assets (CSS)
 docs/              Architecture and future technical documentation
@@ -121,7 +122,7 @@ meaningful boundary:
 | `ai` | AI provider abstraction, RAG orchestration, usage logging | 4/5 (created) |
 | `question_bank` | Question CRUD, Bloom, marking schemes | 7 (created) |
 | `examinations` | Exam generation and validation | 8 (created) |
-| `learning` | Student practice and progress | 9 |
+| `learning` | Student practice and progress | 9 (created) |
 | `whatsapp` | Webhook and message handling (thin layer) | 10 |
 | `notifications` | User notifications | 12 |
 | `reports` | Analytics and reporting | 12 |
@@ -444,6 +445,37 @@ not blocking (teacher judgment per SKILLS section 12).
 DRAFT -> READY_FOR_REVIEW (requires passing validation) -> PUBLISHED
 (re-validates). Printable paper and answer-key/marking-scheme views are
 staff-only, print-styled, and re-check permissions server-side.
+
+---
+
+## 5.9 Phase 9 Design Decisions (Student Practice)
+
+### Student-only area with strict ownership
+The whole `/practice/` area requires the STUDENT role (teachers/admins get
+403 - it is a learner space, not an invigilation console). Attempts are
+visible to exactly one user: `get_owned_attempt` turns any other access,
+including cross-student, into 404 so existence is never revealed. Admin
+visibility of performance data is read-only via Django admin.
+
+### Answers withheld until submission; grading split honestly
+In-progress attempts render questions/options only. On submission:
+MCQ/True-False auto-grade by normalized comparison against the answer key;
+structured/essay items stay ungraded until the student applies the teacher's
+marking scheme themselves ("I got it right/wrong") - explanations, model
+answers, and schemes appear only post-submission. Re-submission is blocked.
+
+### Quiz sources
+Self-serve quizzes draw randomly from APPROVED questions in the student's
+school (class-matched when set), honoring subject/topic filters with honest
+"no material" errors. Published exams become practice papers cloned in
+question order - draft/unpublished or other-school/other-class exams are
+rejected.
+
+### Private progress + recommendations
+Progress pages aggregate ONLY the requesting student's data (per-subject
+averages, recent scores). Weak-topic recommendations rank the student's own
+graded responses by accuracy and link out to library search and AI revision
+notes - no cross-student analytics exists anywhere in this phase.
 
 ---
 

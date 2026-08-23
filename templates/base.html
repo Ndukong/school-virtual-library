@@ -17,6 +17,7 @@
         <a href="{% url 'home' %}">Home</a>
         <a href="{% url 'library-list' %}">Library</a>
         <a href="{% url 'search' %}">Search</a>
+        {% if user.role == "STUDENT" %}<a href="{% url 'practice-home' %}">Practice</a>{% endif %}
         <a href="{% url 'ai-ask' %}">AI Tutor</a>
         {% if user.role == "TEACHER" or user.role == "ADMIN" or user.is_superuser %}
           <a href="{% url 'question-list' %}">Question Bank</a>

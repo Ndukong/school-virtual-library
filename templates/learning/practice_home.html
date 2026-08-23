@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Practice - School Virtual Library{% endblock %}
+{% block content %}
+  <h1>Practice</h1>
+
+  <form method="post" action="{% url 'practice-start' %}" class="filters card">
+    {% csrf_token %}
+    <label for="{{ form.subject.id_for_label }}">Subject</label>
+    {{ form.subject }}
+    <label for="{{ form.topic.id_for_label }}">Topic (optional)</label>
+    {{ form.topic }}
+    <label for="{{ form.size.id_for_label }}">Length</label>
+    {{ form.size }}
+    <button type="submit">Start quiz</button>
+  </form>
+
+  {% if exams %}
+    <section class="card">
+      <h2>Practice a published exam</h2>
+      <ul class="plain-list">
+        {% for exam in exams %}
+          <li style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+            <span>{{ exam.title }} &middot; {{ exam.subject.name }} &middot; {{ exam.total_marks }} marks</span>
+            <form method="post" action="{% url 'practice-exam-start' %}" class="inline-form">
+              {% csrf_token %}
+              <input type="hidden" name="exam" value="{{ exam.public_id }}">
+              <button type="submit" class="btn-secondary">Start</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if recent_attempts %}
+    <section class="card">
+      <h2>My recent attempts</h2>
+      <ul class="plain-list">
+        {% for attempt in recent_attempts %}
+          <li>
+            <a href="{% if attempt.status == "SUBMITTED" %}{% url 'attempt-result' attempt.public_id %}{% else %}{% url 'attempt-page' attempt.public_id %}{% endif %}">
+              {{ attempt.get_source_display }}{% if attempt.subject %} &middot; {{ attempt.subject.name }}{% endif %}
+              &middot; {{ attempt.created_at|date:"Y-m-d H:i" }}
+            </a>
+            &middot; <strong>{{ attempt.get_status_display }}</strong>
+            {% if attempt.status == "SUBMITTED" %}&middot; score {{ attempt.earned_marks }}/{{ attempt.possible_marks }}{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+      <p><a href="{% url 'practice-progress' %}">View my progress</a></p>
+    </section>
+  {% endif %}
+{% endblock %}

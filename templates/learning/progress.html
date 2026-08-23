@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}My progress - Practice{% endblock %}
+{% block content %}
+  <h1>My progress</h1>
+
+  <div class="card">
+    <p><strong>Submitted quizzes:</strong> {{ submitted_count }}</p>
+    {% if per_subject %}
+      <ul class="plain-list">
+        {% for subject, entry in per_subject.items %}
+          <li>{{ subject }}: {{ entry.attempts }} attempt(s), average {{ entry.average }}%</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>Submit a quiz to start tracking progress.</p>
+    {% endif %}
+  </div>
+
+  {% if recommendations %}
+    <section class="card">
+      <h2>Topics to revise</h2>
+      <ul class="plain-list">
+        {% for rec in recommendations %}
+          <li>
+            <strong>{{ rec.topic }}</strong> &middot; accuracy {{ rec.accuracy }}%
+            over {{ rec.total }} question(s)
+            &middot; <a href="{% url 'search' %}?q={{ rec.topic|urlencode }}">find material</a>
+            &middot; <a href="{% url 'ai-study' %}?kind=REVISION_NOTES">make revision notes</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if recent %}
+    <section class="card">
+      <h2>Recent attempts</h2>
+      <ul class="plain-list">
+        {% for item in recent %}
+          <li>
+            <a href="{% url 'attempt-result' item.attempt.public_id %}">
+              {{ item.attempt.get_source_display }}
+            </a>
+            {% if item.attempt.subject %} &middot; {{ item.attempt.subject.name }}{% endif %}
+            &middot; {{ item.percent }}%
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  <p><a href="{% url 'practice-home' %}">Back to practice</a></p>
+{% endblock %}
