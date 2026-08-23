@@ -166,6 +166,32 @@ class Resource(TimeStampedModel):
         self.file_size = uploaded_file.size
 
 
+class ResourceAccessEvent(TimeStampedModel):
+    """One download/read of a resource by a user - feeds school-level usage
+    analytics. Aggregated only; never displayed per student anywhere."""
+
+    class Kind(models.TextChoices):
+        READ = "READ", "Read (inline)"
+        DOWNLOAD = "DOWNLOAD", "Download"
+
+    resource = models.ForeignKey(
+        Resource, on_delete=models.CASCADE, related_name="access_events"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="resource_access_events"
+    )
+    kind = models.CharField(max_length=12, choices=Kind.choices)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["resource", "kind", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} {self.resource.title} by {self.user}"
+
+
 class BookChapter(TimeStampedModel):
     """A chapter of a BOOK resource."""
 

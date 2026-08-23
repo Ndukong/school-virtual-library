@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Reports - School Virtual Library{% endblock %}
+{% block content %}
+  <h1>Reports</h1>
+  <p class="subtitle">School-level statistics. Individual students are never shown.</p>
+  {% if schools %}
+    <form method="get" class="filters card">
+      <label for="id_school">School</label>
+      <select id="id_school" name="school">
+        {% for school in schools %}
+          <option value="{{ school.pk }}" {% if selected_school and school.pk == selected_school.pk %}selected{% endif %}>{{ school.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Show</button>
+    </form>
+    {% if not selected_school %}<div class="card notice"><p>Choose a school to view reports.</p></div>{% endif %}
+  {% endif %}
+  <div class="stat-grid">
+    <a class="card stat" href="{% url 'reports-library' %}{% if selected_school %}?school={{ selected_school.pk }}{% endif %}">
+      <span class="stat-number">Library</span><span class="stat-label">Usage &amp; processing</span>
+    </a>
+    <a class="card stat" href="{% url 'reports-ai' %}{% if selected_school %}?school={{ selected_school.pk }}{% endif %}">
+      <span class="stat-number">AI</span><span class="stat-label">Usage &amp; failures</span>
+    </a>
+    <a class="card stat" href="{% url 'reports-practice' %}{% if selected_school %}?school={{ selected_school.pk }}{% endif %}">
+      <span class="stat-number">Practice</span><span class="stat-label">Class/subject/topics</span>
+    </a>
+    <a class="card stat" href="{% url 'reports-teachers' %}{% if selected_school %}?school={{ selected_school.pk }}{% endif %}">
+      <span class="stat-number">Teachers</span><span class="stat-label">Activity</span>
+    </a>
+  </div>
+{% endblock %}

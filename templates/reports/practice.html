@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Practice report{% endblock %}
+{% block content %}
+  <h1>Practice report</h1>
+  {% if selected_school %}<p class="subtitle">{{ selected_school.name }}</p>{% endif %}
+  {% if stats %}
+    <div class="card">
+      <h2>Overview</h2>
+      <ul class="plain-list">
+        <li>Submitted quizzes: {{ stats.submitted_count }}</li>
+        <li>Average score: {{ stats.average_percent }}%</li>
+        <li>Self-assessed items: {{ stats.self_marked_count }}</li>
+      </ul>
+    </div>
+    {% if stats.by_subject %}
+      <div class="card"><h2>Attempts by subject</h2>
+        <ul class="plain-list">{% for row in stats.by_subject %}<li>{{ row.subject__name }}: {{ row.count }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+    {% if stats.by_class %}
+      <div class="card"><h2>Attempts by class</h2>
+        <ul class="plain-list">{% for row in stats.by_class %}<li>{{ row.student__student_profile__school_class__name }}: {{ row.count }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+    {% if topics %}
+      <div class="card"><h2>Topics practiced (aggregate)</h2>
+        <ul class="plain-list">{% for topic in topics %}<li>{{ topic.topic }}: {{ topic.attempted }} question(s) attempted, {{ topic.accuracy }}% accurate</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="card notice"><p>No school selected.</p></div>
+  {% endif %}
+  <p><a href="{% url 'reports-home' %}">Back to reports</a></p>
+{% endblock %}

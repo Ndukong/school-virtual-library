@@ -911,6 +911,51 @@ Established:
 practice performance, popular topics, teacher activity - school-level only,
 never exposing individual students).
 
+**Phase 12 — Analytics: COMPLETE.**
+
+Established:
+
+- Staff-only `/reports/` hub with four school-scoped dashboards: Library
+  (type/status/subject/access), AI (scopes/kinds/models/failures), Practice
+  (submitted count, average %, by subject/class, popular & weak topics by
+  aggregate accuracy), and Teacher activity (uploads/questions/exams/AI)
+- Aggregates only: individual students are never named or exposed - a
+  dedicated test asserts report dictionaries carry no student fields
+- `ResourceAccessEvent` records downloads/reads (previously silent), feeding
+  usage analytics; recorded by the permission-gated file views
+- Superusers select a school via `?school=`; cross-school teachers see their
+  own school's data only
+
+All 13 planned phases are now complete.
+
+---
+
+## 17. Final Project Summary
+
+13 phases, ~5,000+ lines, 298 passing tests, covering a complete school
+digital library platform:
+
+```text
+0 Architecture        foundation, settings, tests
+1 Core platform       users, roles, schools, classes, subjects, profiles
+2 Digital library     resources, upload security, controlled access, reader
+3 Document processing extraction, chunking, DB-backed job queue, honesty
+4 Semantic search     provider abstraction, hybrid retrieval, embeddings
+5 AI Librarian        grounded RAG, citations, Groq default, audit, limits
+6 AI study tools      summaries, notes, definitions, practice (grounded)
+7 Question bank       metadata, Bloom, approval workflow, AI import gate
+8 Exams               approved-only assembly, exact-total arithmetic
+9 Student practice    private quizzes, auto+self grading, progress
+10 WhatsApp           verified webhook, code linking, thin handlers
+11 PWA                installable shell, offline-safe worker, mobile CSS
+12 Analytics          school-level aggregates, zero student exposure
+```
+
+Security anchors kept through every phase: school-scoped querysets, role
+gates centrally enforced, untrusted upload handling, permission-filtered
+retrieval before any AI context, honest no-hallucination behaviour, and keys
+only in `.env`. See `docs/architecture.md` for the full decision log.
+
 **Recommended next step: Phase 9 — Student Practice** (quizzes from approved
 questions without answers until submission, scoring, explanations, personal
 progress - never exposing other students' results).

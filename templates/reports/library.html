@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Library report{% endblock %}
+{% block content %}
+  <h1>Library report</h1>
+  {% if selected_school %}<p class="subtitle">{{ selected_school.name }}</p>{% endif %}
+  {% if stats %}
+    <div class="card">
+      <h2>Overview</h2>
+      <ul class="plain-list">
+        <li>Total resources: {{ stats.total_resources }} ({{ stats.active_resources }} active)</li>
+        <li>Ready for search/AI: {{ stats.processing_ready }} &middot; Failed processing: {{ stats.processing_failed }}</li>
+        <li>Uploads this month: {{ stats.uploads_this_month }}</li>
+        <li>Downloads/reads (all time): {{ stats.access_total }} &middot; this month: {{ stats.access_this_month }}</li>
+      </ul>
+    </div>
+    {% if stats.by_type %}
+      <div class="card"><h2>By type</h2>
+        <ul class="plain-list">{% for row in stats.by_type %}<li>{{ row.resource_type }}: {{ row.count }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+    {% if stats.top_subjects %}
+      <div class="card"><h2>Popular subjects</h2>
+        <ul class="plain-list">{% for row in stats.top_subjects %}<li>{{ row.subject__name }}: {{ row.count }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="card notice"><p>No school selected.</p></div>
+  {% endif %}
+  <p><a href="{% url 'reports-home' %}">Back to reports</a></p>
+{% endblock %}

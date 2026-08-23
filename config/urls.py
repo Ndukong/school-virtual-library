@@ -16,6 +16,7 @@ urlpatterns = [
     path("practice/", include("learning.urls")),
     path("whatsapp/", include("whatsapp.urls")),
     path("", include("pwa.urls")),
+    path("reports/", include("reports.urls")),
     path("library/", include("library.urls")),
     path("search/", include("search.urls")),
     path("ai/", include("ai.urls")),

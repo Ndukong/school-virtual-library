@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "learning",
     "whatsapp",
     "pwa",
+    "reports",
 ]
 
 # Custom user model. Must remain set before the first migration; changing it

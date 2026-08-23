@@ -31,6 +31,7 @@
         {% if user.role == "TEACHER" or user.role == "ADMIN" or user.is_superuser %}
           <a href="{% url 'question-list' %}">Question Bank</a>
           <a href="{% url 'exam-list' %}">Exams</a>
+          <a href="{% url 'reports-home' %}">Reports</a>
         {% endif %}
       {% endif %}
     </nav>

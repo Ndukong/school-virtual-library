@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}AI report{% endblock %}
+{% block content %}
+  <h1>AI usage report</h1>
+  {% if selected_school %}<p class="subtitle">{{ selected_school.name }}</p>{% endif %}
+  {% if stats %}
+    <div class="card">
+      <h2>Overview</h2>
+      <ul class="plain-list">
+        <li>Questions asked: {{ stats.interaction_total }} ({{ stats.interaction_failures }} not answered)</li>
+        <li>Study materials generated: {{ stats.generation_total }} ({{ stats.generation_failures }} failures)</li>
+      </ul>
+    </div>
+    {% if stats.by_scope %}
+      <div class="card"><h2>Questions by scope</h2>
+        <ul class="plain-list">{% for row in stats.by_scope %}<li>{{ row.scope }}: {{ row.count }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+    {% if stats.by_generation_kind %}
+      <div class="card"><h2>Study materials by kind</h2>
+        <ul class="plain-list">{% for row in stats.by_generation_kind %}<li>{{ row.kind }}: {{ row.count }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+    {% if stats.models_used %}
+      <div class="card"><h2>Models used</h2>
+        <ul class="plain-list">{% for row in stats.models_used %}<li>{{ row.model }}: {{ row.count }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="card notice"><p>No school selected.</p></div>
+  {% endif %}
+  <p><a href="{% url 'reports-home' %}">Back to reports</a></p>
+{% endblock %}

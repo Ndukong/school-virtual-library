@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Teacher activity report{% endblock %}
+{% block content %}
+  <h1>Teacher activity report</h1>
+  {% if selected_school %}<p class="subtitle">{{ selected_school.name }}</p>{% endif %}
+  {% if stats %}
+    <div class="card">
+      <h2>Contributions</h2>
+      {% if stats %}
+        <ul class="plain-list">
+          {% for row in stats %}
+            <li><strong>{{ row.username }}</strong> ({{ row.role }}):
+              {{ row.uploads }} upload(s), {{ row.questions }} question(s),
+              {{ row.exams }} exam(s), {{ row.ai_generations }} AI generation(s)</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No teachers or admins on staff yet.</p>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="card notice"><p>No school selected.</p></div>
+  {% endif %}
+  <p><a href="{% url 'reports-home' %}">Back to reports</a></p>
+{% endblock %}

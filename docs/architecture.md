@@ -1,6 +1,6 @@
 # Architecture
 
-Status: current as of Phase 6 (AI study tools).
+Status: current through Phase 12 - ALL PLANNED PHASES COMPLETE.
 
 ---
 
@@ -127,8 +127,8 @@ meaningful boundary:
 | `learning` | Student practice and progress | 9 (created) |
 | `whatsapp` | Webhook and message handling (thin layer) | 10 (created) |
 | `pwa` | Installable PWA shell, manifest, service worker, offline | 11 (created) |
-| `notifications` | User notifications | 12 |
-| `reports` | Analytics and reporting | 12 |
+| `notifications` | User notifications | 12 (deferred: no notification channels exist yet) |
+| `reports` | Analytics and reporting | 12 (created) |
 
 Apps are added as their phase starts. The exact set may evolve with
 architectural justification.
@@ -539,6 +539,31 @@ a documented follow-up for full iOS homescreen fidelity.
 `/profile/` completes the recommended primary navigation (Home, Library,
 Search, Practice, AI Tutor, Profile) with a role-aware link hub (own
 progress, own AI materials, staff areas).
+
+---
+
+## 5.12 Phase 12 Design Decisions (Analytics)
+
+### Aggregates only - students are never exposed
+Every report aggregates across students: class/subject/topic rollups with
+totals and averages. No report, CSV, or view returns per-student rows, and a
+dedicated test asserts the aggregate dictionaries contain no student fields
+(AGENTS.md sections 18/22). Analytics access is staff-only (reports /practice/
+dashboard), school-scoped; superusers pick a school via `?school=`.
+
+### Live ORM aggregation, no denormalized tables
+Statistics compute on the fly with school-scoped `values().annotate()` over
+existing models - correct at school-library scale and free of sync bugs. The
+only new model is `library.ResourceAccessEvent` (kind + timestamp) recorded
+by the download/read views, which were otherwise silent about usage.
+
+### Report surfaces
+Library (type/status/subject/access), AI (scopes, generation kinds, models,
+failures), Practice (submitted count, average %, by subject/class, self-marked
+items, popular&weak topics by aggregate accuracy), and Teacher activity
+(uploads/questions/exams/AI generations per staff member). Token-level cost
+tracking remains in `AIRequestLog` at the app level; school-level cost
+rollups would follow if per-school provider billing matters later.
 
 ---
 

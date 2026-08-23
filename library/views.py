@@ -8,7 +8,7 @@ from accounts.permissions import AdminOrTeacherRequiredMixin
 from documents.dispatcher import enqueue
 from documents.models import ProcessingJob
 from library.forms import ResourceForm
-from library.models import Resource
+from library.models import Resource, ResourceAccessEvent
 from library.services import sanitize_original_filename, user_can_read_resource, visible_resources
 
 
@@ -86,6 +86,15 @@ class _ResourceFileView(LoginRequiredMixin, View):
         resource = self.get_resource()
         if not resource.file:
             raise Http404("Resource has no attached file.")
+        ResourceAccessEvent.objects.create(
+            resource=resource,
+            user=request.user,
+            kind=(
+                ResourceAccessEvent.Kind.READ
+                if self.disposition == "inline"
+                else ResourceAccessEvent.Kind.DOWNLOAD
+            ),
+        )
         response = FileResponse(
             resource.file.open("rb"),
             content_type="application/pdf",
