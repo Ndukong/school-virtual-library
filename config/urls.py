@@ -1,8 +1,9 @@
 """
 URL configuration for the School Virtual Library project.
 
-Authentication and dashboard routes live in the accounts app; the Django
-admin remains mounted at /admin/.
+Auth and dashboards live in the accounts app at the root; the Django admin
+remains mounted at /admin/. Media files are intentionally NOT routed here:
+documents are only accessible through controlled library views.
 """
 
 from django.contrib import admin
@@ -10,5 +11,6 @@ from django.urls import include, path
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("library/", include("library.urls")),
     path("", include("accounts.urls")),
 ]

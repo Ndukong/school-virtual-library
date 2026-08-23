@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "subjects",
     "students",
     "teachers",
+    "library",
 ]
 
 # Custom user model. Must remain set before the first migration; changing it
@@ -187,6 +188,10 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 # controlled download views are implemented in a later phase.
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Library upload limits. Uploaded files are untrusted input: the library app
+# additionally validates extension, size, and file content signature.
+LIBRARY_MAX_UPLOAD_MB = 100
 
 
 # Default primary key field type

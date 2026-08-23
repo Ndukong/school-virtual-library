@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ resource.title }} - School Virtual Library{% endblock %}
+{% block content %}
+  <h1>{{ resource.title }}</h1>
+  <p class="subtitle">{{ resource.get_resource_type_display }} &middot; {{ resource.school.name }}</p>
+
+  <div class="card">
+    <dl class="meta-list">
+      {% if resource.author %}<div><dt>Author</dt><dd>{{ resource.author }}</dd></div>{% endif %}
+      {% if resource.publisher %}<div><dt>Publisher</dt><dd>{{ resource.publisher }}</dd></div>{% endif %}
+      {% if resource.edition %}<div><dt>Edition</dt><dd>{{ resource.edition }}</dd></div>{% endif %}
+      {% if resource.isbn %}<div><dt>ISBN</dt><dd>{{ resource.isbn }}</dd></div>{% endif %}
+      {% if resource.publication_year %}<div><dt>Year</dt><dd>{{ resource.publication_year }}</dd></div>{% endif %}
+      {% if resource.subject %}<div><dt>Subject</dt><dd>{{ resource.subject }}</dd></div>{% endif %}
+      {% if resource.school_class %}<div><dt>Class</dt><dd>{{ resource.school_class }}</dd></div>{% endif %}
+      <div><dt>Licensing</dt><dd>{{ resource.get_licensing_status_display }}</dd></div>
+      {% if can_upload %}<div><dt>Status</dt><dd>{{ resource.get_processing_status_display }}</dd></div>{% endif %}
+    </dl>
+    {% if resource.description %}<p>{{ resource.description }}</p>{% endif %}
+  </div>
+
+  {% if chapters %}
+    <section aria-label="Chapters" class="card">
+      <h2>Chapters</h2>
+      <ul class="plain-list chapter-list">
+        {% for chapter in chapters %}
+          <li>
+            {{ chapter }}
+            {% if chapter.sections.all %}
+              <ul class="plain-list section-list">
+                {% for section in chapter.sections.all %}
+                  <li>{{ section }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if resource.file %}
+    <div class="btn-row">
+      <a class="btn-primary" href="{% url 'library-read' resource.public_id %}" target="_blank" rel="noopener">Read</a>
+      <a class="btn-secondary" href="{% url 'library-download' resource.public_id %}">Download</a>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -679,6 +679,23 @@ Established:
 - `create_school_admin` management command for onboarding schools
 - 72 tests covering models, permissions (allow/deny), auth flows, admin scoping, and the command
 
+**Phase 2 — Digital Library: COMPLETE.**
+
+Established:
+
+- `Resource` model with full metadata (author/publisher/ISBN/curriculum/...),
+  licensing status, access policy (whole school / teachers only), uploader
+  attribution, and the document-processing state machine (pipeline lands in Phase 3)
+- Books with chapters and sections (page ranges ready for future RAG citations)
+- Secure upload flow for staff: PDF-only (extension + size + `%PDF` signature
+  checks), filename sanitization, school-forced storage paths
+- Private media: no direct `/media/` serving; controlled download and inline
+  read views enforce per-role access (students see whole-school resources only)
+- Library list with search/type filters and pagination; mobile-first detail
+  page with Read/Download actions
+- 32 additional tests (104 total): access matrix, IDOR/cross-school denials,
+  upload security incl. disguised-content rejection, pagination safety
+
 Development commands:
 
 ```bash
@@ -694,8 +711,8 @@ python manage.py test
 python manage.py runserver
 ```
 
-**Recommended next step: Phase 2 — Digital Library** (resources, books,
-chapters, sections, metadata, upload, storage, permissions, reader).
+**Recommended next step: Phase 3 — Document Processing** (text extraction,
+OCR fallback, chunking, background jobs, processing status tracking).
 
 ---
 

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Library - School Virtual Library{% endblock %}
+{% block content %}
+  <h1>Library</h1>
+  <form method="get" class="filters card">
+    <label for="id_q">Search</label>
+    <input type="search" id="id_q" name="q" value="{{ current_filters.q }}" placeholder="Title, author, description">
+    <label for="id_type">Type</label>
+    <select id="id_type" name="type">
+      <option value="">All types</option>
+      {% for value, label in resource_types %}
+        <option value="{{ value }}" {% if current_filters.type == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Filter</button>
+    {% if can_upload %}
+      <a class="btn-link" href="{% url 'library-upload' %}">Upload a resource</a>
+    {% endif %}
+  </form>
+
+  {% if object_list %}
+    <ul class="resource-list">
+      {% for resource in object_list %}
+        <li class="card resource-card">
+          <div class="resource-head">
+            <a class="resource-title" href="{{ resource.get_absolute_url }}">{{ resource.title }}</a>
+            <span class="badge">{{ resource.get_resource_type_display }}</span>
+          </div>
+          <p class="meta">
+            {% if resource.author %}{{ resource.author }} &middot;{% endif %}
+            {{ resource.get_licensing_status_display }}
+            {% if resource.subject %} &middot; {{ resource.subject }}{% endif %}
+          </p>
+        </li>
+      {% endfor %}
+    </ul>
+    {% if is_paginated %}
+      <nav class="pager" aria-label="Pagination">
+        {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}&q={{ current_filters.q }}&type={{ current_filters.type }}">Previous</a>
+        {% endif %}
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}&q={{ current_filters.q }}&type={{ current_filters.type }}">Next</a>
+        {% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="card notice"><p>No resources found.</p></div>
+  {% endif %}
+{% endblock %}

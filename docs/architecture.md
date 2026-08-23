@@ -1,6 +1,6 @@
 # Architecture
 
-Status: current as of Phase 1 (core platform).
+Status: current as of Phase 2 (digital library).
 
 ---
 
@@ -47,6 +47,7 @@ classes/           SchoolClass (class/form) model
 subjects/          Subject model
 students/          Student profile model
 teachers/          Teacher profile model
+library/           Resources, books, chapters/sections, upload, reader
 templates/         Project-level templates (base, login, dashboards)
 static/            Project-level static assets (CSS)
 docs/              Architecture and future technical documentation
@@ -108,8 +109,8 @@ meaningful boundary:
 | `common` | Shared utilities, base models, admin scoping | 0 (created) |
 | `accounts` | Authentication and role model | 1 (created) |
 | `schools`, `classes`, `subjects`, `students`, `teachers` | Core domain structure | 1 (created) |
-| `library` | Resources, books, chapters, sections, metadata | 2 |
-| `documents` | Upload, storage, processing pipeline, status | 2/3 |
+| `library` | Resources, books, chapters, sections, metadata | 2 (created; upload/reader live here) |
+| `documents` | Extraction pipeline, chunks, processing jobs | 3 |
 | `search` | Keyword + semantic search (pgvector) | 4 |
 | `ai` | AI provider abstraction and RAG orchestration | 4/5 |
 | `question_bank` | Question CRUD, Bloom, marking schemes | 7 |
@@ -184,6 +185,56 @@ password hashing is unaffected.
 
 ---
 
+## 5.2 Phase 2 Design Decisions (Digital Library)
+
+### App boundary
+`library` owns resources, metadata, upload, storage, and the reader. The
+`documents` app (extraction, chunking, jobs) starts in Phase 3 when it has a
+meaningful boundary; `Resource.processing_status` already carries the full
+state machine from `AGENTS.md` section 11 so no migration churn follows.
+
+### Uploads are untrusted input
+Phase 2 accepts **PDF files only** (matches the textbook/past-paper focus and
+the Phase 3 PDF/OCR pipeline). Validation lives in
+`library.services.validate_upload`: extension whitelist, size cap
+(`LIBRARY_MAX_UPLOAD_MB`, default 100), and an actual `%PDF-` signature check
+on file content — client-supplied content types are never trusted.
+`sanitize_original_filename` strips path components and unsafe characters;
+it is display metadata only and never constructs filesystem paths. Storage
+paths are generated exclusively by Django's FileField/storage stack under
+`MEDIA_ROOT/resources/<year>/<month>/`.
+
+### Private storage, controlled access
+Media is deliberately not routed in the URLconf: there is no direct
+`/media/` serving. Files stream through permission-checked views
+(`library-download`, `library-read`) using `FileResponse`. Read rules are
+centralized in `library.services.user_can_read_resource` /
+`visible_resources`:
+
+- platform superusers: everything,
+- school administrators: everything in their school (including inactive),
+- teachers: everything in their school,
+- students: active resources with the SCHOOL access policy only.
+
+Views derive objects from the visible queryset, so unauthorized or
+cross-school IDs yield 404 rather than leaking existence.
+
+### Metadata and licensing
+Resources carry the full metadata set required by AGENTS.md section 10
+(author, publisher, edition, ISBN, curriculum, language, publication year,
+subject/class links) plus licensing status (OWNED / LICENSED / OPEN_ACCESS /
+PUBLIC_DOMAIN / TEACHER_CREATED / SCHOOL_CREATED / UNKNOWN), access policy
+(SCHOOL / TEACHERS_ONLY), uploader attribution, and an `is_active` flag for
+takedowns. Books require an attached file. Subject/class links must belong to
+the resource's school; replacing a file resets processing to UPLOADED.
+
+### Structure for future RAG
+Books carry `BookChapter` and `BookSection` rows with page ranges so Phase 3
+extraction and Phase 5 citations can anchor to the right location. URLs use
+the resource's UUID (`public_id`); integer pks stay internal.
+
+---
+
 ## 6. Security Baseline
 
 Security-relevant choices already made in Phase 0:
@@ -253,7 +304,10 @@ Both must pass before the phase is considered complete.
 
 ## 10. Open Questions / Future Decisions
 
-- Object storage provider (`STORAGE_PROVIDER`) for large documents: Phase 2.
+- Object storage provider (`STORAGE_PROVIDER`) for large documents: Phase 3
+  (local MEDIA storage is sufficient until then).
 - AI provider of record (`AI_PROVIDER`) and models: Phase 4.
 - Celery vs. alternative background job system: Phase 3.
+- Additional upload formats (DOCX, images, EPUB): when their extraction
+  pipelines exist; PDF-only is a deliberate Phase 2 constraint.
 - Self-service admin views beyond Django admin (school dashboards): Phase 2+.
