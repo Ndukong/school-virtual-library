@@ -11,8 +11,8 @@ from django.test import SimpleTestCase
 
 class ProjectConfigurationTests(SimpleTestCase):
     def test_secret_key_is_configured(self):
-        self.assertNotEqual(settings.SECRET_KEY, "")
-        self.assertNotEqual(settings.SECRET_KEY, "django-insecure-")
+        self.assertIsInstance(settings.SECRET_KEY, str)
+        self.assertGreaterEqual(len(settings.SECRET_KEY.strip()), 32)
 
     def test_debug_is_boolean(self):
         self.assertIsInstance(settings.DEBUG, bool)

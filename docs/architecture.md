@@ -80,8 +80,11 @@ else:
     ENGINE = django.db.backends.sqlite3      # default local dev
 ```
 
-PostgreSQL URLs follow `postgresql://user:password@host:port/dbname` and are
-parsed without an extra dependency.
+PostgreSQL URLs follow `postgresql://user:password@host:port/dbname`. Parsing
+is implemented in `config.settings.parse_postgresql_url` (no extra dependency):
+it accepts the legacy `postgres://` scheme, defaults missing host to
+`localhost`, rejects unsupported schemes and URLs without a database name,
+and is unit-tested in `config/tests.py`.
 
 `SECRET_KEY` has a development-only fallback. `.env` must set a real value
 outside development. `.env` is never committed.

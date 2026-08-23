@@ -84,25 +84,38 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Set DATABASE_URL to a PostgreSQL URL to use PostgreSQL.
 # pgvector support (semantic search) is added in Phase 4 on PostgreSQL.
 
-if os.getenv("DATABASE_URL"):
-    url = os.environ["DATABASE_URL"]
-    if url.startswith("postgresql://") or url.startswith("postgres://"):
-        DATABASES = {
-            "default": {
-                "ENGINE": "django.db.backends.postgresql",
-                # See also https://www.postgresql.org/docs/current/libpq-connect.html
-                "NAME": _parse_db_component(url, "database", "school_library"),
-                "USER": _parse_db_component(url, "user", ""),
-                "PASSWORD": _parse_db_component(url, "password", ""),
-                "HOST": _parse_db_component(url, "host", "localhost"),
-                "PORT": _parse_db_component(url, "port", "5432"),
-            }
-        }
-    else:
+from urllib.parse import urlparse
+
+
+def parse_postgresql_url(url):
+    """Parse a SQLAlchemy-style PostgreSQL URL into a Django DATABASES entry.
+
+    Accepts 'postgresql://user:password@host:port/dbname' and the legacy
+    'postgres://' scheme. Missing host/port fall back to libpq-friendly
+    defaults. Raises ValueError when required parts are absent.
+    """
+    parsed = urlparse(url.replace("postgres://", "postgresql://", 1))
+    if parsed.scheme != "postgresql":
         raise ValueError(
             "Unsupported DATABASE_URL scheme. Use a PostgreSQL URL "
             "('postgresql://...') or leave DATABASE_URL unset for SQLite."
         )
+    name = (parsed.path or "").lstrip("/")
+    if not name:
+        raise ValueError("DATABASE_URL must include a database name.")
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": name,
+        "USER": parsed.username or "",
+        "PASSWORD": parsed.password or "",
+        "HOST": parsed.hostname or "localhost",
+        "PORT": str(parsed.port) if parsed.port else "",
+    }
+
+
+_database_url = os.getenv("DATABASE_URL")
+if _database_url:
+    DATABASES = {"default": parse_postgresql_url(_database_url)}
 else:
     DATABASES = {
         "default": {
@@ -110,22 +123,6 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
-
-
-def _parse_db_component(url, component, default):
-    """Return a host/user/port/database component from a SQLAlchemy-style
-    URL like postgresql://user:password@host:5432/dbname."""
-    from urllib.parse import urlparse
-
-    parsed = urlparse(url.replace("postgres://", "postgresql://"))
-    mapping = {
-        "host": parsed.hostname or default,
-        "port": str(parsed.port) if parsed.port else default,
-        "user": parsed.username or "",
-        "password": parsed.password or "",
-        "database": (parsed.path or "/").lstrip("/") or default,
-    }
-    return mapping[component]
 
 
 # Password validation
