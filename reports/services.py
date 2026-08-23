@@ -6,7 +6,7 @@ practice statistics roll up across students per class/subject/topic only
 select the school explicitly.
 """
 
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Sum
 
 from accounts.models import User
 from ai.models import AIGeneration, AIInteraction

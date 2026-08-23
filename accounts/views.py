@@ -1,9 +1,15 @@
-from django.contrib.auth.views import LoginView as DjangoLoginView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import LoginView as DjangoLoginView
 from django.shortcuts import redirect
 from django.views.generic import TemplateView, View
 
-from accounts.permissions import AdminRequiredMixin, StudentRequiredMixin, TeacherRequiredMixin, is_admin, is_teacher
+from accounts.permissions import (
+    AdminRequiredMixin,
+    StudentRequiredMixin,
+    TeacherRequiredMixin,
+    is_admin,
+    is_teacher,
+)
 
 
 class HomeView(View):

@@ -12,7 +12,7 @@ from question_bank.models import Question
 from question_bank.services import approve_question
 from schools.models import School
 from subjects.models import Subject
-from whatsapp.models import WhatsAppLink, WhatsAppMessage, WhatsAppSession
+from whatsapp.models import WhatsAppMessage, WhatsAppSession
 from whatsapp.services import (
     HELP_MENU,
     HUB_CHALLENGE,
@@ -178,8 +178,8 @@ class RoutingTests(TestCase):
 
     def _processed_resource(self, pages, title, school=None, with_embed=True):
         from django.core.files.base import ContentFile
-        from documents.services import (chunk_resource, embed_resource_chunks,
-                                        extract_text)
+
+        from documents.services import chunk_resource, embed_resource_chunks, extract_text
         from documents.tests import build_pdf
         from library.models import Resource
 
@@ -344,7 +344,6 @@ class WebhookViewsTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_signed_inbound_deduplicates_retries(self):
-        from django.urls import reverse as rev
 
         with self._configure():
             client = Client()
@@ -362,8 +361,6 @@ class WebhookViewsTests(TestCase):
     @override_settings(WHATSAPP_APP_SECRET=APP_SECRET, WHATSAPP_PROVIDER="console",
                        WHATSAPP_RATE_LIMIT_PER_MINUTE=1)
     def test_phone_rate_limit_throttles(self):
-        from django.test import override_settings as _o
-        from django.urls import reverse as rev
 
         # Seed one inbound this minute -> next exceeds limit.
         WhatsAppMessage.objects.create(

@@ -1,5 +1,3 @@
-import io
-import uuid
 from unittest import mock
 
 from django.core.files.base import ContentFile
@@ -11,11 +9,10 @@ from documents.admin import DocumentChunkAdmin
 from documents.dispatcher import claim_next_job, drain_queue, enqueue, process_job
 from documents.models import (
     DocumentChunk,
-    ExtractedPage,
     ProcessingJob,
     ProcessingLog,
 )
-from documents.services import PipelineError, extract_text, utcnow
+from documents.services import PipelineError, extract_text
 from library.models import BookChapter, BookSection, Resource
 from schools.models import School
 

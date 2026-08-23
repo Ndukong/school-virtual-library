@@ -7,9 +7,10 @@ from django.views.generic import CreateView, DetailView, ListView, View
 from accounts.permissions import AdminOrTeacherRequiredMixin
 from documents.dispatcher import enqueue
 from documents.models import ProcessingJob
+from library.files import sanitize_original_filename
 from library.forms import ResourceForm
 from library.models import Resource, ResourceAccessEvent
-from library.services import sanitize_original_filename, user_can_read_resource, visible_resources
+from library.services import user_can_read_resource, visible_resources
 
 
 def user_can_upload(user):

@@ -5,10 +5,8 @@ existing service modules. These models handle only the channel's plumbing:
 link codes, per-phone session state, and a message log with dedupe.
 """
 
-import uuid
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 

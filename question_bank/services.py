@@ -5,7 +5,6 @@ import re
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q
 from django.utils import timezone
 
 from accounts.permissions import is_admin, is_teacher

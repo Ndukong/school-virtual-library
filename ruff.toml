@@ -1,7 +1,8 @@
 # Ruff configuration. Keep the rule set small enough that the gate is
 # actually green; widen it deliberately, never all at once.
 
-target-version = "py311"   # adjust to your actual Python
+target-version = "py310"   # matches the dev venv (Python 3.10.6); the
+                           # py311 default let autofix emit 3.11-only code
 line-length = 100
 
 exclude = [

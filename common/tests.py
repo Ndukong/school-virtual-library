@@ -5,10 +5,10 @@ from django.conf import settings
 from django.contrib.admin import site as default_admin_site
 from django.test import RequestFactory, SimpleTestCase, TestCase
 
+from accounts.models import User
 from classes.admin import SchoolClassAdmin
 from classes.models import SchoolClass
 from schools.models import School
-from accounts.models import User
 
 
 class ProjectConfigurationTests(SimpleTestCase):

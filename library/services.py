@@ -10,10 +10,8 @@ import os
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db.models import Q
 
 from accounts.permissions import is_admin
-from library.files import sanitize_original_filename  # re-exported for views
 from library.models import Resource
 
 PDF_MAGIC = b"%PDF-"

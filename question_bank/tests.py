@@ -1,6 +1,5 @@
-from django.test import Client, TestCase, override_settings
+from django.test import Client, TestCase
 from django.urls import reverse
-from django.utils import timezone
 
 from accounts.models import User
 from ai.models import AIGeneration, AIInteraction

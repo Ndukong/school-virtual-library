@@ -11,13 +11,12 @@ from django.conf import settings
 
 from ai.models import AIGeneration, AIInteraction
 from ai.prompts import (
-    INSUFFICIENT_MESSAGE,
     LIBRARIAN_SYSTEM_PROMPT,
     STUDY_ADDENDUM,
 )
-from ai.rag import build_context, resolve_scope, sanitize_citations, sources_for  # noqa: F401
-from ai.ratelimit import RateLimited, enforce as check_rate_limit
 from ai.providers import AIError, get_chat_provider
+from ai.rag import build_context, resolve_scope, sanitize_citations, sources_for
+from ai.ratelimit import enforce as check_rate_limit
 from library.models import Resource
 from search.services import hybrid_search
 

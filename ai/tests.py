@@ -12,14 +12,13 @@ from ai.providers.gemini import GeminiProvider
 from ai.providers.groq import DEFAULT_GROQ_MODEL, GROQ_BASE_URL, GroqProvider
 from ai.rag import (
     SYSTEM_PROMPT,
-    RateLimited,
     ask,
     build_context,
-    check_rate_limit,
     extract_citations,
     sanitize_citations,
     sources_for,
 )
+from ai.ratelimit import RateLimited
 from documents.models import ChunkEmbedding
 from documents.services import chunk_resource, embed_resource_chunks, extract_text
 from library.models import BookChapter, Resource

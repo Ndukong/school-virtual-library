@@ -1,5 +1,3 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import Http404
 from django.views.generic import TemplateView
 
 from accounts.permissions import AdminOrTeacherRequiredMixin

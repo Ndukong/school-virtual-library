@@ -2,8 +2,7 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
-from django.urls import reverse
-from django.views.generic import ListView, TemplateView, View
+from django.views.generic import TemplateView, View
 
 from accounts.permissions import StudentRequiredMixin
 from examinations.models import Exam
@@ -13,8 +12,8 @@ from learning.services import (
     PracticeError,
     get_owned_attempt,
     progress_summary,
-    record_self_mark,
     recommend_topics,
+    record_self_mark,
     start_from_exam,
     start_quiz,
     student_class_id,

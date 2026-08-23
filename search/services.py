@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from django.conf import settings
 from django.db.models import Q
 
-from ai.providers import get_provider, AIError
+from ai.providers import AIError, get_provider
 from documents.models import ChunkEmbedding, DocumentChunk
 from library.models import Resource
 from library.services import visible_resources
@@ -23,7 +23,7 @@ from library.services import visible_resources
 @dataclass
 class SearchResult:
     chunk: DocumentChunk
-    keyword_rank: int = None  # noqa: RUF012 - dataclass default None fine
+    keyword_rank: int = None
     semantic_score: float = None
     fused_score: float = 0.0
 

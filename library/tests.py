@@ -1,11 +1,10 @@
 import atexit
-import os
 import shutil
 import tempfile
 
+from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.exceptions import ValidationError
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 

@@ -5,7 +5,6 @@ Configure via AI_BASE_URL, e.g.
 Any endpoint exposing POST {base}/embeddings and {base}/chat/completions works.
 """
 
-import json
 
 from django.conf import settings
 

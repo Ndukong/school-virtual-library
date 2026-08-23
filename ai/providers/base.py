@@ -50,7 +50,7 @@ class BaseProvider(abc.ABC):
             vectors = self._embed_impl(texts)
         except AIError:
             raise  # HTTP layer already logged each failed attempt
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._log("EMBED", False, (time.monotonic() - started) * 1000,
                       input_items=len(texts), error=exc)
             raise
@@ -64,7 +64,7 @@ class BaseProvider(abc.ABC):
             result = self._generate_impl(prompt, system)
         except AIError:
             raise  # HTTP layer already logged each failed attempt
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._log("GENERATE", False, (time.monotonic() - started) * 1000,
                       input_items=1, error=exc)
             raise

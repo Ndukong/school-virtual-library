@@ -23,10 +23,12 @@ from ai.prompts import (
     DATA_CLOSE,
     DATA_OPEN,
     INSUFFICIENT_MESSAGE,
+)
+from ai.prompts import (
     LIBRARIAN_SYSTEM_PROMPT as SYSTEM_PROMPT,
 )
 from ai.providers import AIError, get_chat_provider
-from ai.ratelimit import RateLimited, enforce as check_rate_limit
+from ai.ratelimit import enforce as check_rate_limit
 from search.services import hybrid_search
 
 _CITATION_PATTERN = re.compile(r"\[(\d{1,2})\]")
@@ -118,7 +120,6 @@ def resolve_scope(user, scope, resource_public_id=None, chapter_id=None):
 def ask(user, question, scope=AIInteraction.Scope.LIBRARY,
         resource_public_id=None, chapter_id=None, chat_provider=None):
     """Answer a question with library-grounded RAG. Returns AIInteraction."""
-    from search.services import _candidate_chunks
 
     check_rate_limit(user)
 

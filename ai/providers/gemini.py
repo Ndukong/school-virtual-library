@@ -6,9 +6,6 @@ per Google's documented scheme for server-side calls.
 """
 
 import json
-import urllib.request
-
-from django.conf import settings
 
 from ai.providers.base import AIError, BaseProvider, GenerateResult
 

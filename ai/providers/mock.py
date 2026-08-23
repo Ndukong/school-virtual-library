@@ -16,7 +16,7 @@ class MockAIProvider(BaseProvider):
     name = "mock"
 
     def _vector(self, text):
-        digest = hashlib.sha256(f"{self.model}:{text}".encode("utf-8")).digest()
+        digest = hashlib.sha256(f"{self.model}:{text}".encode()).digest()
         vector = []
         for i in range(MOCK_DIMENSIONS):
             byte = digest[i % len(digest)]

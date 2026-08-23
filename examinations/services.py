@@ -196,7 +196,7 @@ def suggest_fill_from_ai(user, exam, chat_provider=None):
     Never modifies the exam itself: suggested questions are PENDING_REVIEW and
     must be teacher-approved, after which the exam can be re-assembled.
     """
-    from ai.providers import AIError, get_chat_provider
+    from ai.providers import get_chat_provider
 
     shortfall = exam.total_marks - exam.achieved_marks
     if shortfall <= 0:
@@ -261,8 +261,8 @@ def suggest_fill_from_ai(user, exam, chat_provider=None):
 # Re-export for view layer convenience without widening internal imports.
 __all__ = [
     "ExamError",
-    "WorkflowError",
     "ValidationReport",
+    "WorkflowError",
     "assemble_exam",
     "mark_ready_for_review",
     "publish_exam",

@@ -4,7 +4,7 @@ from django.urls import reverse
 from accounts.models import User
 from ai.models import AIGeneration, AIInteraction
 from classes.models import SchoolClass
-from examinations.models import Exam, ExamQuestion
+from examinations.models import Exam
 from learning.models import AttemptResponse, PracticeAttempt
 from library.models import Resource, ResourceAccessEvent
 from question_bank.models import Question
@@ -17,8 +17,8 @@ from reports.services import (
     teacher_activity,
 )
 from schools.models import School
-from subjects.models import Subject
 from students.models import Student
+from subjects.models import Subject
 
 PASSWORD = "ComplexPass123!"
 

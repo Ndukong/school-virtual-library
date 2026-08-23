@@ -13,6 +13,7 @@ from documents.dispatcher import enqueue
 from documents.models import ChunkEmbedding, ProcessingJob
 from documents.services import chunk_resource, embed_resource_chunks, extract_text
 from library.models import Resource
+from schools.models import School
 from search.services import (
     build_snippet,
     cosine_similarity,
@@ -20,7 +21,6 @@ from search.services import (
     keyword_search,
     semantic_search,
 )
-from schools.models import School
 from subjects.models import Subject
 
 PASSWORD = "ComplexPass123!"

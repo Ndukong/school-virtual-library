@@ -34,7 +34,7 @@ class ServiceWorkerTests(TestCase):
         self.assertEqual(response["Cache-Control"], "no-store")
 
     def test_worker_has_expected_content_markers(self):
-        with open(finders.find("pwa/sw.js"), "r", encoding="utf-8") as handle:
+        with open(finders.find("pwa/sw.js"), encoding="utf-8") as handle:
             body = handle.read()
         self.assertIn("svl-shell-v1", body)
         self.assertIn('"/offline/"', body)

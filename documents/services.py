@@ -237,7 +237,7 @@ def embed_resource_chunks(resource):
         batch = pending_chunks[start : start + batch_size]
         try:
             vectors = provider.embed([chunk.text for chunk in batch])
-        except Exception as exc:  # noqa: BLE001 - recorded as pipeline failure
+        except Exception as exc:
             raise PipelineError(f"Embedding failed: {exc}") from exc
         for chunk, vector in zip(batch, vectors):
             ChunkEmbedding.objects.create(

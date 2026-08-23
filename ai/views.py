@@ -5,7 +5,8 @@ from django.urls import reverse
 from django.views.generic import ListView, TemplateView
 
 from ai.models import AIGeneration, AIInteraction
-from ai.rag import AIError, RateLimited, ask, sources_for
+from ai.rag import AIError, ask, sources_for
+from ai.ratelimit import RateLimited
 from ai.study import generate_study_material
 from classes.models import SchoolClass
 from library.models import BookChapter

@@ -18,7 +18,7 @@ Rules this file obeys (AGENTS.md):
 import tempfile
 from pathlib import Path
 
-from config.settings import *  # noqa: F403 - test settings intentionally inherit
+from config.settings import *
 
 # --- Identity -------------------------------------------------------------
 # Explicit, obviously-fake values so tests never depend on a developer's .env.

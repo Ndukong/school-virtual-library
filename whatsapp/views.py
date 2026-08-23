@@ -18,8 +18,8 @@ from whatsapp.services import (
     phone_rate_exceeded,
     send_message,
     verify_signature,
-    verify_token_supplied,
 )
+
 
 # Meta signs the raw request body; our middleware chain must not parse it
 # before verification, hence csrf_exempt + manual body reads.
