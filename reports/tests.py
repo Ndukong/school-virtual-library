@@ -1,4 +1,8 @@
-from django.test import Client, TestCase
+from datetime import datetime
+from datetime import timezone as dt_timezone
+from unittest import mock
+
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from accounts.models import User
@@ -10,6 +14,7 @@ from library.models import Resource, ResourceAccessEvent
 from question_bank.models import Question
 from question_bank.services import approve_question
 from reports.services import (
+    _month_start,
     ai_stats,
     library_stats,
     popular_topics,
@@ -264,3 +269,41 @@ class ReportViewTests(ReportTestBase):
         response_b = client.get(reverse("reports-library"), {"school": str(self.school_b.pk)})
         self.assertContains(response_b, "Beta High")
         self.assertContains(response_b, "Total resources: 1")
+
+
+class LocalDateBoundaryTests(ReportTestBase):
+    """Date-boundary queries must be computed in LOCAL time (Africa/Douala)."""
+
+    def test_month_start_is_local_midnight_in_utc(self):
+        with override_settings(TIME_ZONE="Africa/Douala"):
+            fixed_utc = datetime(2026, 2, 15, 12, 0, tzinfo=dt_timezone.utc)
+            with mock.patch("reports.services.timezone.now", return_value=fixed_utc):
+                start = _month_start()
+        # Local 2026-02-01 00:00 (+01:00) == 2026-01-31 23:00 UTC.
+        self.assertEqual(start, datetime(2026, 1, 31, 23, 0, tzinfo=dt_timezone.utc))
+
+def test_recent_days_bucket_by_local_calendar_day(self):
+        from reports.services import _recent_days_by_local_date
+
+        late = AIInteraction.objects.create(
+            user=self.student_a, school=self.school_a, question="late", answer="a"
+        )
+        mid = AIInteraction.objects.create(
+            user=self.student_a, school=self.school_a, question="mid", answer="b"
+        )
+        with override_settings(TIME_ZONE="Africa/Douala"):
+            fixed_utc = datetime(2026, 2, 3, 12, 0, tzinfo=dt_timezone.utc)
+            with mock.patch("reports.services.timezone.now", return_value=fixed_utc):
+                # created_at is auto_now_add; force the timestamps via update.
+                AIInteraction.objects.filter(pk=late.pk).update(
+                    created_at=datetime(2026, 2, 1, 23, 30, tzinfo=dt_timezone.utc)
+                )  # Feb 2 00:30 local
+                AIInteraction.objects.filter(pk=mid.pk).update(
+                    created_at=datetime(2026, 2, 1, 22, 0, tzinfo=dt_timezone.utc)
+                )  # Feb 1 23:00 local
+                rows = _recent_days_by_local_date(
+                    AIInteraction.objects.filter(school=self.school_a)
+                )
+        dates = [row["created_at__date"] for row in rows]
+        self.assertIn("2026-02-02", dates)
+        self.assertIn("2026-02-01", dates)

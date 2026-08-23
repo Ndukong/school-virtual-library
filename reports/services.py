@@ -6,7 +6,12 @@ practice statistics roll up across students per class/subject/topic only
 select the school explicitly.
 """
 
+import datetime
+from zoneinfo import ZoneInfo
+
+from django.conf import settings
 from django.db.models import Count, Sum
+from django.utils import timezone
 
 from accounts.models import User
 from ai.models import AIGeneration, AIInteraction
@@ -16,11 +21,21 @@ from library.models import Resource, ResourceAccessEvent
 WEEK_DAYS = 14
 
 
-def _month_start():
-    from django.utils import timezone
+def _app_tz():
+    return ZoneInfo(getattr(settings, "TIME_ZONE", "UTC"))
 
-    now = timezone.now()
-    return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+def _local_now():
+    """Now expressed in the application timezone (Africa/Douala)."""
+    return timezone.now().astimezone(_app_tz())
+
+
+def _month_start():
+    """Start of the current month in LOCAL time, returned as an aware UTC
+    instant so `created_at__gte` comparisons match the school's calendar."""
+    local = _local_now()
+    local_start = local.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    return local_start.astimezone(ZoneInfo("UTC"))
 
 
 def library_stats(school):
@@ -69,12 +84,27 @@ def ai_stats(school):
             interactions.exclude(model="")
             .values("model").annotate(count=Count("pk")).order_by("-count")[:6]
         ),
-        "recent_days": list(
-            interactions.values("created_at__date")
-            .annotate(count=Count("pk"))
-            .order_by("-created_at__date")[:WEEK_DAYS]
-        ),
+        "recent_days": _recent_days_by_local_date(interactions),
     }
+
+
+def _recent_days_by_local_date(queryset):
+    """Bucket interaction timestamps by LOCAL calendar day (Africa/Douala),
+    newest first. `created_at__date` in SQL would follow the database's
+    session timezone, which is UTC here - so bucket in Python."""
+    local_cutoff = (_local_now() - datetime.timedelta(days=WEEK_DAYS)).astimezone(
+        ZoneInfo("UTC")
+    )
+    buckets = {}
+    for created_at in queryset.filter(created_at__gte=local_cutoff).values_list(
+        "created_at", flat=True
+    ):
+        day = created_at.astimezone(_app_tz()).date()
+        buckets[day] = buckets.get(day, 0) + 1
+    return [
+        {"created_at__date": day.isoformat(), "count": count}
+        for day, count in sorted(buckets.items(), reverse=True)
+    ]
 
 
 def practice_stats(school):

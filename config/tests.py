@@ -6,11 +6,72 @@ import sys
 from pathlib import Path
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase
 
-from config.settings import parse_database_url
+from config.settings import (
+    base_security_defaults,
+    parse_database_url,
+    validate_run_mode,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+class ProductionGuardTests(SimpleTestCase):
+    """Work Package 2: refuse to boot in production-like mode with dev
+    credentials. The guard is evaluated at settings-import time, so the suite
+    keeps DEBUG=True (never overridden) and `check --deploy` runs separately
+    with DEBUG=False and production values in the CLI environment."""
+
+    def test_guard_fires_on_dev_secret_when_debug_false(self):
+        with self.assertRaises(ImproperlyConfigured):
+            validate_run_mode(
+                debug=False,
+                secret_key="dev-insecure-secret-key-do-not-use-in-production",
+                allowed_hosts=["ok.example.org"],
+            )
+
+    def test_guard_fires_on_empty_hosts_when_debug_false(self):
+        with self.assertRaises(ImproperlyConfigured):
+            validate_run_mode(debug=False, secret_key="a" * 60, allowed_hosts=[])
+
+    def test_guard_passes_with_prod_credentials(self):
+        validate_run_mode(debug=False, secret_key="a" * 60, allowed_hosts=["ok.example.org"])
+
+    def test_guard_never_fires_when_debug_true(self):
+        # Normal test runs (DEBUG=True) must never trip the guard.
+        validate_run_mode(True, "dev-insecure-secret-key-do-not-use-in-production", [])
+
+    def test_guard_does_not_fire_during_a_normal_test_run(self):
+        from config import settings as base_settings
+
+        validate_run_mode(
+            base_settings.DEBUG,
+            base_settings.SECRET_KEY,
+            base_settings.ALLOWED_HOSTS,
+        )
+
+
+class SecurityDefaultsTests(SimpleTestCase):
+    """The DEBUG-dependent defaults are safe by default; tests keep DEBUG on."""
+
+    def test_production_defaults_are_secure(self):
+        defaults = base_security_defaults(debug=False)
+        self.assertTrue(defaults["SECURE_SSL_REDIRECT"])
+        self.assertEqual(defaults["SECURE_HSTS_SECONDS"], 31536000)
+        self.assertTrue(defaults["SECURE_HSTS_INCLUDE_SUBDOMAINS"])
+        self.assertTrue(defaults["SECURE_HSTS_PRELOAD"])
+        self.assertTrue(defaults["SESSION_COOKIE_SECURE"])
+        self.assertTrue(defaults["CSRF_COOKIE_SECURE"])
+        self.assertTrue(defaults["SESSION_EXPIRE_AT_BROWSER_CLOSE"])
+
+    def test_dev_defaults_are_permissive(self):
+        defaults = base_security_defaults(debug=True)
+        self.assertFalse(defaults["SECURE_SSL_REDIRECT"])
+        self.assertEqual(defaults["SECURE_HSTS_SECONDS"], 0)
+        self.assertFalse(defaults["SESSION_COOKIE_SECURE"])
+        self.assertFalse(defaults["SESSION_EXPIRE_AT_BROWSER_CLOSE"])
 
 
 class DatabaseConfigTests(SimpleTestCase):

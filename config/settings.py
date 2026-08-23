@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Load secrets from .env into the environment (dotenv never overrides
@@ -24,8 +25,40 @@ def _env_bool(name, default=False):
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+DEV_SECRET_KEY = "dev-insecure-secret-key-do-not-use-in-production"
+
+
+def base_security_defaults(debug):
+    """DEBUG-dependent security defaults, kept in one testable place.
+
+    Production is the safe default: everything below turns on unless DEBUG
+    is enabled. Every value can still be forced via environment.
+    """
+    return {
+        "SECURE_SSL_REDIRECT": not debug,
+        "SECURE_HSTS_SECONDS": 31536000 if not debug else 0,
+        "SECURE_HSTS_INCLUDE_SUBDOMAINS": not debug,
+        "SECURE_HSTS_PRELOAD": not debug,
+        "SESSION_COOKIE_SECURE": not debug,
+        "CSRF_COOKIE_SECURE": not debug,
+        "SESSION_EXPIRE_AT_BROWSER_CLOSE": not debug,
+    }
+
+
+def validate_run_mode(debug, secret_key, allowed_hosts):
+    """Refuse to boot in production-like mode with development credentials."""
+    if debug:
+        return
+    if secret_key == DEV_SECRET_KEY:
+        raise ImproperlyConfigured(
+            "SECRET_KEY must not be the development default when DEBUG=False."
+        )
+    if not allowed_hosts:
+        raise ImproperlyConfigured("ALLOWED_HOSTS must not be empty when DEBUG=False.")
+
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-secret-key-do-not-use-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY", DEV_SECRET_KEY)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = _env_bool("DEBUG", default=True)
@@ -35,6 +68,29 @@ ALLOWED_HOSTS = [
     for host in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
     if host.strip()
 ]
+
+# Production security headers / cookies: enabled by default unless DEBUG,
+# all env-overridable (AGENTS sections 6/7).
+_secure_defaults = base_security_defaults(DEBUG)
+SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT", default=_secure_defaults["SECURE_SSL_REDIRECT"])
+SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", str(_secure_defaults["SECURE_HSTS_SECONDS"])))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool(
+    "SECURE_HSTS_INCLUDE_SUBDOMAINS", default=_secure_defaults["SECURE_HSTS_INCLUDE_SUBDOMAINS"]
+)
+SECURE_HSTS_PRELOAD = _env_bool("SECURE_HSTS_PRELOAD", default=_secure_defaults["SECURE_HSTS_PRELOAD"])
+SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", default=_secure_defaults["SESSION_COOKIE_SECURE"])
+CSRF_COOKIE_SECURE = _env_bool("CSRF_COOKIE_SECURE", default=_secure_defaults["CSRF_COOKIE_SECURE"])
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
+
+validate_run_mode(DEBUG, SECRET_KEY, ALLOWED_HOSTS)
 
 
 # Application definition
@@ -156,7 +212,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+# School is in Cameroon; every date-boundary query runs in local time.
+TIME_ZONE = "Africa/Douala"
 
 USE_I18N = True
 

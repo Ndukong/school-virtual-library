@@ -26,6 +26,11 @@
         <ul class="plain-list">{% for row in stats.models_used %}<li>{{ row.model }}: {{ row.count }}</li>{% endfor %}</ul>
       </div>
     {% endif %}
+    {% if stats.recent_days %}
+      <div class="card"><h2>Questions per day (local time, last 14 days)</h2>
+        <ul class="plain-list">{% for row in stats.recent_days %}<li>{{ row.created_at__date }}: {{ row.count }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
   {% else %}
     <div class="card notice"><p>No school selected.</p></div>
   {% endif %}
