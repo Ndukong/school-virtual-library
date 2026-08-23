@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "question_bank",
     "examinations",
     "learning",
+    "whatsapp",
 ]
 
 # Custom user model. Must remain set before the first migration; changing it
@@ -245,6 +246,19 @@ AI_RATE_LIMIT_PER_MINUTE = 10
 # progress is strictly private to the student.
 PRACTICE_DEFAULT_SIZE = 5
 PRACTICE_MAX_SIZE = 20
+
+# WhatsApp channel (Phase 10). WHATSAPP_PROVIDER=console logs outbound text
+# (dev/tests) and never touches the network; =meta posts to the Graph API.
+# The webhook verifies X-Hub-Signature-256 with WHATSAPP_APP_SECRET and FAILS
+# CLOSED when the secret is unset outside DEBUG.
+WHATSAPP_PROVIDER = os.getenv("WHATSAPP_PROVIDER", "console")
+WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
+WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
+WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v21.0")
+WHATSAPP_RATE_LIMIT_PER_MINUTE = int(os.getenv("WHATSAPP_RATE_LIMIT_PER_MINUTE", "10"))
+WHATSAPP_LINK_CODE_MINUTES = int(os.getenv("WHATSAPP_LINK_CODE_MINUTES", "15"))
 
 
 # Default primary key field type

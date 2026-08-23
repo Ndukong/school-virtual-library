@@ -55,6 +55,7 @@ search/            Keyword + semantic + hybrid retrieval
 question_bank/     Questions, metadata, approval workflow, AI import
 examinations/      Exam assembly from approved questions, validation, printing
 learning/          Student practice: quizzes, scoring, private progress
+whatsapp/          Verified webhook, phone linking, thin menu router
 templates/         Project-level templates (base, login, dashboards)
 static/            Project-level static assets (CSS)
 docs/              Architecture and future technical documentation
@@ -123,7 +124,7 @@ meaningful boundary:
 | `question_bank` | Question CRUD, Bloom, marking schemes | 7 (created) |
 | `examinations` | Exam generation and validation | 8 (created) |
 | `learning` | Student practice and progress | 9 (created) |
-| `whatsapp` | Webhook and message handling (thin layer) | 10 |
+| `whatsapp` | Webhook and message handling (thin layer) | 10 (created) |
 | `notifications` | User notifications | 12 |
 | `reports` | Analytics and reporting | 12 |
 
@@ -476,6 +477,38 @@ Progress pages aggregate ONLY the requesting student's data (per-subject
 averages, recent scores). Weak-topic recommendations rank the student's own
 graded responses by accuracy and link out to library search and AI revision
 notes - no cross-student analytics exists anywhere in this phase.
+
+---
+
+## 5.10 Phase 10 Design Decisions (WhatsApp)
+
+### WhatsApp is an interface, not a database
+The `whatsapp` app ships NO domain models of its own beyond channel plumbing:
+link codes, per-phone session state (menu + quiz context), and a deduped
+message log. Commands are thin routers onto existing services
+(`search.keyword_search`, `ai.rag.ask`, `learning.start_quiz/submit_attempt/
+progress_summary`); no business logic is re-implemented.
+
+### Security posture
+- Webhook: Meta-style GET handshake (verify token) and POST body signing
+  (`X-Hub-Signature-256`, constant-time HMAC over the raw body). Signature
+  enforcement FAILS CLOSED when the app secret is unset outside DEBUG.
+- Linking: phone numbers are never trusted blindly. Binding requires an
+  expiring, single-use `LINK <code>` code generated for an authenticated user
+  (management command `whatsapp_link_code --username`); unlinked phones get a
+  graceful prompt, never data.
+- Rate limits: per-phone messages/min independently of the per-user AI cap.
+- Dedupe: provider retries of the same `wamid` are dropped via a unique log
+  key. Media messages are skipped (unsupported) rather than misparsed.
+- The webhook ALWAYS returns 200 after verification so Meta stops retrying.
+
+### Scope limits
+WhatsApp quizzes use `objective_only=True` (MCQ/True-False auto-gradable);
+multi-step free-text answers stay on the web where typing is practical.
+ASK/SEARCH inherit the exact permission filtering of the web search, so an
+unlinked/other-school context cannot leak content. The `console` provider
+logs outbound text without touching the network (dev/tests); `meta` posts
+to the Graph API with a timeout+single retry.
 
 ---
 

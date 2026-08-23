@@ -51,7 +51,7 @@ def get_owned_attempt(user, public_id):
 
 
 @transaction.atomic
-def start_quiz(student, subject=None, topic="", size=None):
+def start_quiz(student, subject=None, topic="", size=None, objective_only=False):
     """Draw a random approved quiz for the student's school (+ their class)."""
     size = int(size or getattr(settings, "PRACTICE_DEFAULT_SIZE", 5))
     max_size = getattr(settings, "PRACTICE_MAX_SIZE", 20)
@@ -62,6 +62,8 @@ def start_quiz(student, subject=None, topic="", size=None):
         approval_status=Question.ApprovalStatus.APPROVED,
         is_active=True,
     )
+    if objective_only:
+        queryset = queryset.filter(question_type__in=OBJECTIVE_TYPES)
     if subject:
         queryset = queryset.filter(subject=subject)
     class_id = student_class_id(student)

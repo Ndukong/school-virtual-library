@@ -865,6 +865,30 @@ Established:
 verification, account linking rather than phone-number trust, thin message
 handlers over existing services: search/AI/practice, rate limiting).
 
+**Phase 10 — WhatsApp: COMPLETE.**
+
+Established:
+
+- Verified webhook: Meta handshake (verify token) + `X-Hub-Signature-256`
+  HMAC over the raw body; signature enforcement fails closed without the
+  app secret outside DEBUG; always returns 200 so providers stop retrying
+- Account linking: expiring single-use `LINK <code>` codes (never trusting
+  phone numbers); management command `whatsapp_link_code --username`
+- Thin menu router over existing services: `SEARCH` (permission-filtered
+  keyword), `ASK` (grounded AI Librarian), `QUIZ` (objective-only practice
+  flow), `PROGRESS`, `STOP` unlink, help/menu
+- Dedupe of provider retries by `wamid`; media messages skipped; per-phone
+  rate limiting independent of AI caps
+- `console` provider for offline dev; `meta` posts via Graph API with retry
+
+To enable with a real Meta Business account: set `WHATSAPP_PROVIDER=meta`,
+`WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_ACCESS_TOKEN`,
+`WHATSAPP_PHONE_NUMBER_ID` in `.env`, then point the Meta webhook at
+`/whatsapp/webhook/` (verification at `/whatsapp/webhook/verify/`).
+
+**Recommended next step: Phase 11 — PWA** (installable manifest, mobile
+optimization, offline-friendly caching, service worker).
+
 **Recommended next step: Phase 9 — Student Practice** (quizzes from approved
 questions without answers until submission, scoring, explanations, personal
 progress - never exposing other students' results).
