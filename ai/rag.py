@@ -117,10 +117,27 @@ def resolve_scope(user, scope, resource_public_id=None, chapter_id=None):
     return scope, search_scope
 
 
+class QuestionTooLong(ValueError):
+    """Raised when a question exceeds MAX_QUESTION_LENGTH."""
+
+
+MAX_QUESTION_LENGTH = 5000
+
+
+def validate_question(question):
+    """Validate a question for the AI Librarian. Raises ValueError."""
+    if len(question) > MAX_QUESTION_LENGTH:
+        raise QuestionTooLong(
+            f"Questions are limited to {MAX_QUESTION_LENGTH} characters "
+            f"(you sent {len(question)})."
+        )
+
+
 def ask(user, question, scope=AIInteraction.Scope.LIBRARY,
         resource_public_id=None, chapter_id=None, chat_provider=None):
     """Answer a question with library-grounded RAG. Returns AIInteraction."""
 
+    validate_question(question)
     check_rate_limit(user)
 
     scope_label, search_scope = resolve_scope(
@@ -136,7 +153,7 @@ def ask(user, question, scope=AIInteraction.Scope.LIBRARY,
         user=user,
         school=user.school,
         scope=scope_label,
-        question=question[:5000],
+        question=question.strip(),
         prompt_version=getattr(settings, "RAG_PROMPT_VERSION", "rag-v1"),
         retrieved_count=len(results),
     )

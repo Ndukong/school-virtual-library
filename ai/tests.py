@@ -12,6 +12,7 @@ from ai.providers.gemini import GeminiProvider
 from ai.providers.groq import DEFAULT_GROQ_MODEL, GROQ_BASE_URL, GroqProvider
 from ai.rag import (
     SYSTEM_PROMPT,
+    QuestionTooLong,
     ask,
     build_context,
     extract_citations,
@@ -156,6 +157,25 @@ class AskFlowTests(RagTestBase):
     def setUp(self):
         super().setUp()
         self.resource = self.make_ready_resource()
+
+    def test_overlong_question_rejected_not_truncated(self):
+        long_question = "x" * 5200
+        before = AIInteraction.objects.count()
+        with self.assertRaises(QuestionTooLong):
+            ask(self.student_a, long_question)
+        self.assertEqual(AIInteraction.objects.count(), before)
+
+    def test_view_rejects_overlong_question_without_storing(self):
+        client = Client()
+        client.force_login(self.student_a)
+        before = AIInteraction.objects.count()
+        response = client.post(
+            reverse("ai-ask"),
+            {"question": "y" * 5200, "scope": "LIBRARY"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("error=", response.url)
+        self.assertEqual(AIInteraction.objects.count(), before)
 
     def test_grounded_answer_records_citations_and_sources(self):
         with mock.patch("ai.rag.get_chat_provider",

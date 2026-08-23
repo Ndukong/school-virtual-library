@@ -302,7 +302,7 @@ def _search_reply(user, query):
 def _ask_reply(user, question):
     from ai.models import AIInteraction
     from ai.providers import AIError
-    from ai.rag import ask
+    from ai.rag import QuestionTooLong, ask
     from ai.ratelimit import RateLimited
 
     if not question:
@@ -313,6 +313,8 @@ def _ask_reply(user, question):
         return "The AI service is temporarily unavailable; please try again shortly."
     except RateLimited as exc:
         return str(exc)
+    except QuestionTooLong:
+        return "That question is too long; please shorten it to under 5000 characters."
     answer = interaction.answer
     if len(answer) > 1200:
         answer = answer[:1200] + "… (open the full answer on the web portal)"
