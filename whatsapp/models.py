@@ -6,6 +6,8 @@ link codes, per-phone session state, and a message log with dedupe.
 """
 
 
+import uuid
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -84,3 +86,45 @@ class WhatsAppMessage(models.Model):
 
     def __str__(self):
         return f"{self.direction} {self.phone_number}: {self.body[:40]}"
+
+class WhatsAppTask(models.Model):
+    """A queued inbound message waiting for the worker (WP6).
+
+    The webhook only persists tasks and returns 200 immediately; the worker
+    drains them (linking, routing, replying) outside the web request.
+    Deduped by message_id so provider retries never enqueue twice.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        RUNNING = "RUNNING", "Running"
+        DONE = "DONE", "Done"
+        FAILED = "FAILED", "Failed"
+
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    message_id = models.CharField(max_length=120, unique=True, db_index=True)
+    phone_number = models.CharField(max_length=20, db_index=True)
+    body = models.TextField(blank=True)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    max_attempts = models.PositiveSmallIntegerField(default=3)
+    last_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.phone_number}: {self.body[:30]} ({self.status})"
+
+
+class WhatsAppKillSwitch(models.Model):
+    """Singleton admin kill switch for the WhatsApp channel (WP6)."""
+
+    key = models.CharField(max_length=20, unique=True, default="main")
+    enabled = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return "enabled" if self.enabled else "disabled"

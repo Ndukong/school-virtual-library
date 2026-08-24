@@ -344,23 +344,28 @@ class WebhookViewsTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_signed_inbound_deduplicates_retries(self):
+        from whatsapp.services import drain_whatsapp_queue
 
         with self._configure():
             client = Client()
             payload = meta_payload("wamid-dup", body="LINK " + self.link.code)
             first = signed_post(client, payload)
             second = signed_post(client, payload)
-        self.assertEqual(first.status_code, 200)
-        self.assertEqual(second.status_code, 200)
-        self.assertEqual(
-            WhatsAppMessage.objects.filter(direction="IN").count(), 1
-        )
+            self.assertEqual(first.status_code, 200)
+            self.assertEqual(second.status_code, 200)
+            self.assertEqual(
+                WhatsAppMessage.objects.filter(direction="IN").count(), 1
+            )
+            self.assertEqual(WhatsAppTask.objects.count(), 1)
+            # Linking happens in the worker, not the webhook.
+            drain_whatsapp_queue()
         session = WhatsAppSession.objects.get()
         self.assertEqual(session.linked_user, self.student)
 
     @override_settings(WHATSAPP_APP_SECRET=APP_SECRET, WHATSAPP_PROVIDER="console",
                        WHATSAPP_RATE_LIMIT_PER_MINUTE=1)
     def test_phone_rate_limit_throttles(self):
+        from whatsapp.services import drain_whatsapp_queue
 
         # Seed one inbound this minute -> next exceeds limit.
         WhatsAppMessage.objects.create(
@@ -370,7 +375,143 @@ class WebhookViewsTests(TestCase):
         payload = meta_payload("wamid-rate", body="MENU")
         response = signed_post(client, payload)
         self.assertEqual(response.status_code, 200)
+        drain_whatsapp_queue()
         outbound = WhatsAppMessage.objects.filter(
             direction="OUT", body=RATE_LIMITED_REPLY
         )
         self.assertTrue(outbound.exists())
+
+import logging
+
+from whatsapp.models import WhatsAppTask
+from whatsapp.services import (
+    GENERIC_APOLOGY,
+    channel_enabled,
+    daily_outbound_exceeded,
+    drain_whatsapp_queue,
+    enqueue_inbound,
+    may_reply_within_window,
+    set_channel_enabled,
+)
+
+
+class ChannelReliabilityTests(TestCase):
+    """WP6: webhook persists + returns sub-second; the worker does the work."""
+
+    def setUp(self):
+        self.school = School.objects.create(name="Reliability School")
+        self.teacher = User.objects.create_user(
+            "relteacher", password=PASSWORD, role=User.Role.TEACHER, school=self.school
+        )
+        self.student = User.objects.create_user(
+            "relstudent", password=PASSWORD, role=User.Role.STUDENT, school=self.school
+        )
+
+    def test_webhook_queues_without_processing_synchronously(self):
+        from whatsapp.models import WhatsAppSession
+
+        with override_settings(WHATSAPP_APP_SECRET=APP_SECRET, WHATSAPP_PROVIDER="console"):
+            client = Client()
+            payload = meta_payload("wamid-q1", body="SEARCH anything")
+            response = signed_post(client, payload)
+        self.assertEqual(response.status_code, 200)
+        # Nothing linked/handled yet - the webhook only persisted the task.
+        self.assertEqual(WhatsAppTask.objects.filter(status="PENDING").count(), 1)
+        self.assertFalse(WhatsAppSession.objects.filter(phone_number=PHONE).exists())
+
+    def test_handler_exception_never_leaks_text_to_user(self):
+        enqueue_inbound("wamid-exc", PHONE, "MENU")
+        task = WhatsAppTask.objects.get(message_id="wamid-exc")
+        task.max_attempts = 1
+        task.save(update_fields=["max_attempts"])
+        with mock.patch(
+            "whatsapp.services.handle_text", side_effect=RuntimeError("secret internal boom")
+        ):
+            with self.assertLogs("whatsapp.services", level=logging.ERROR) as captured:
+                drain_whatsapp_queue()
+        task.refresh_from_db()
+        self.assertEqual(task.status, "FAILED")
+        self.assertIn("secret internal boom", task.last_error)
+        self.assertTrue(
+            WhatsAppMessage.objects.filter(
+                direction="OUT", body=GENERIC_APOLOGY
+            ).exists()
+        )
+        for message in WhatsAppMessage.objects.filter(direction="OUT"):
+            self.assertNotIn("secret internal boom", message.body)
+        self.assertTrue(
+            any("task failed" in record.getMessage() for record in captured.records)
+        )
+
+    def test_outbound_retries_then_succeeds(self):
+        from whatsapp.services import send_message
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self):
+                return b'{"ok": true}'
+
+        with mock.patch(
+            "urllib.request.urlopen",
+            side_effect=[ConnectionResetError("net flap"), FakeResponse()],
+        ) as opener:
+            with override_settings(WHATSAPP_PROVIDER="meta", WHATSAPP_ACCESS_TOKEN="t",
+                                   WHATSAPP_PHONE_NUMBER_ID="p"):
+                body = send_message(PHONE, "hello", user=self.student)
+        self.assertEqual(body, "hello")
+        self.assertEqual(opener.call_count, 2)
+
+    def test_message_window_blocks_reply_outside_24h(self):
+        from django.utils import timezone
+
+        old = WhatsAppMessage.objects.create(
+            message_id="old-in", phone_number=PHONE, direction="IN", body="old",
+        )
+        WhatsAppMessage.objects.filter(pk=old.pk).update(
+            created_at=timezone.now() - timezone.timedelta(hours=25)
+        )
+        self.assertFalse(may_reply_within_window(PHONE))
+        WhatsAppTask.objects.create(message_id="wamid-window",
+                                    phone_number=PHONE, body="MENU")
+        with override_settings(WHATSAPP_PROVIDER="console"):
+            drain_whatsapp_queue()
+        outbound = WhatsAppMessage.objects.filter(direction="OUT", phone_number=PHONE)
+        self.assertFalse(outbound.exists())  # window closed: reply suppressed
+
+    def test_daily_outbound_cap(self):
+        WhatsAppMessage.objects.create(
+            message_id="out-1", phone_number=PHONE, direction="OUT", body="x",
+        )
+        with override_settings(WHATSAPP_DAILY_MESSAGE_CAP=1):
+            self.assertTrue(daily_outbound_exceeded(PHONE))
+        with override_settings(WHATSAPP_DAILY_MESSAGE_CAP=0):
+            self.assertFalse(daily_outbound_exceeded(PHONE))
+
+    def test_kill_switch_drops_inbound_and_blocks_worker(self):
+        set_channel_enabled(False)
+        self.assertFalse(channel_enabled())
+        with override_settings(WHATSAPP_APP_SECRET=APP_SECRET, WHATSAPP_PROVIDER="console"):
+            client = Client()
+            response = signed_post(client, meta_payload("wamid-kill", body="MENU"))
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(WhatsAppTask.objects.filter(message_id="wamid-kill").exists())
+        set_channel_enabled(True)
+        self.assertTrue(channel_enabled())
+
+    def test_switch_command(self):
+        from io import StringIO
+        from django.core.management import call_command
+
+        out = StringIO()
+        call_command("whatsapp_switch", "on", stdout=out)
+        self.assertTrue(channel_enabled())
+        call_command("whatsapp_switch", "off", stdout=out)
+        self.assertFalse(channel_enabled())
+        call_command("whatsapp_switch", "status", stdout=out)
+        self.assertIn("channel enabled: False", out.getvalue())
+        set_channel_enabled(True)

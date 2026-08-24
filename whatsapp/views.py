@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseForbidden
@@ -9,16 +10,14 @@ from whatsapp.services import (
     HUB_CHALLENGE,
     HUB_MODE,
     HUB_TOKEN,
-    RATE_LIMITED_REPLY,
     WhatsAppError,
-    get_session,
-    handle_text,
-    mark_seen,
+    channel_enabled,
+    enqueue_inbound,
     normalize_inbound,
-    phone_rate_exceeded,
-    send_message,
     verify_signature,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # Meta signs the raw request body; our middleware chain must not parse it
@@ -35,7 +34,12 @@ def webhook_verify(request):
 @csrf_exempt
 @require_POST
 def webhook_receive(request):
-    """Meta webhook entry. Always returns 200 so providers stop retrying."""
+    """Meta webhook entry: verify, persist, return 200 immediately.
+
+    All message handling (linking, routing, replies, pricing) happens in the
+    database-backed queue drained by ``process_whatsapp``, so this handler is
+    always sub-second and provider retries are cheap to absorb.
+    """
     raw = request.body
     try:
         if not verify_signature(raw, request.headers.get("X-Hub-Signature-256")):
@@ -48,21 +52,11 @@ def webhook_receive(request):
     except ValueError:
         return HttpResponse("ok")  # malformed body: drop, let provider stop retrying
 
+    if not channel_enabled():
+        logger.warning("whatsapp webhook: channel disabled; ignoring payload")
+        return HttpResponse("ok")
+
     for message_id, phone, text in normalize_inbound(payload):
-        session = get_session(phone)
-        if not mark_seen(message_id, phone, session.linked_user, text):
-            continue  # provider retried the same wamid
-
-        if phone_rate_exceeded(phone):
-            send_message(phone, RATE_LIMITED_REPLY, user=session.linked_user)
-            continue
-
-        try:
-            replies = handle_text(session, text)
-        except Exception as exc:  # noqa: BLE001 - channel must survive
-            replies = [f"Something went wrong processing your message: {exc}"]
-        for reply in replies:
-            if reply:
-                send_message(phone, reply, user=session.linked_user)
+        enqueue_inbound(message_id, phone, text)
 
     return HttpResponse("ok")

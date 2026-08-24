@@ -8,6 +8,7 @@ a second database.
 import hashlib
 import hmac
 import json
+import logging
 import secrets
 import time
 import urllib.request
@@ -18,12 +19,24 @@ from django.utils import timezone
 
 from learning.models import PracticeAttempt
 from learning.services import progress_summary, start_quiz, submit_attempt
-from whatsapp.models import WhatsAppLink, WhatsAppMessage, WhatsAppSession
+from whatsapp.models import (
+    WhatsAppKillSwitch,
+    WhatsAppLink,
+    WhatsAppMessage,
+    WhatsAppSession,
+    WhatsAppTask,
+)
+
+logger = logging.getLogger(__name__)
 
 # Meta's webhook verification fields.
 HUB_MODE = "hub.mode"
 HUB_TOKEN = "hub.verify_token"
 HUB_CHALLENGE = "hub.challenge"
+
+GENERIC_APOLOGY = (
+    "Something went wrong on our side. Please try again in a moment."
+)
 
 
 class WhatsAppError(Exception):
@@ -71,20 +84,6 @@ def normalize_inbound(payload):
                 text = ((message.get("text") or {}).get("body") or "").strip()
                 if mid and phone:
                     yield mid, f"+{phone.lstrip('+')}", text
-
-
-def mark_seen(message_id, phone_number, user, body=""):
-    """Record inbound message; returns True on first sight of this wamid."""
-    _, created = WhatsAppMessage.objects.get_or_create(
-        message_id=message_id,
-        defaults={
-            "phone_number": phone_number,
-            "user": user,
-            "direction": "IN",
-            "body": body[:5000],
-        },
-    )
-    return created
 
 
 # ---------------------------------------------------------------------------
@@ -397,3 +396,172 @@ def _progress_reply(user):
     for subject, entry in summary["per_subject"].items():
         lines.append(f"• {subject}: {entry['average']}% avg over {entry['attempts']}")
     return "\n".join(lines)
+
+# ---------------------------------------------------------------------------
+# WP6: queued inbound processing (webhook persists, worker replies)
+# ---------------------------------------------------------------------------
+
+def channel_enabled():
+    """The channel is on when the env flag AND the admin kill switch are on."""
+    if not getattr(settings, "WHATSAPP_ENABLED", True):
+        return False
+    switch = WhatsAppKillSwitch.objects.filter(key="main").first()
+    if switch is None:
+        return True
+    return switch.enabled
+
+
+def set_channel_enabled(enabled):
+    switch, _ = WhatsAppKillSwitch.objects.get_or_create(key="main")
+    switch.enabled = bool(enabled)
+    switch.save(update_fields=["enabled", "updated_at"])
+    return switch
+
+
+def enqueue_inbound(message_id, phone_number, body):
+    """Persist the IN log row and a PENDING task for the worker.
+
+    WhatsAppMessage is the dedupe source (provider retries of the same wamid
+    are dropped); it also feeds phone rate/window accounting.
+    """
+    _, created = WhatsAppMessage.objects.get_or_create(
+        message_id=message_id,
+        defaults={
+            "phone_number": phone_number,
+            "direction": "IN",
+            "body": body[:5000],
+        },
+    )
+    if not created:
+        return False
+    WhatsAppTask.objects.get_or_create(
+        message_id=message_id,
+        defaults={"phone_number": phone_number, "body": body[:5000]},
+    )
+    return True
+
+
+def claim_whatsapp_task():
+    """Atomically claim the oldest pending task (bumps attempts), or None."""
+    from django.db import transaction
+    from django.db.models import F
+
+    with transaction.atomic():
+        candidate = (
+            WhatsAppTask.objects.filter(status=WhatsAppTask.Status.PENDING)
+            .order_by("created_at")
+            .first()
+        )
+        if candidate is None:
+            return None
+        claimed = WhatsAppTask.objects.filter(
+            pk=candidate.pk, status=WhatsAppTask.Status.PENDING
+        ).update(
+            status=WhatsAppTask.Status.RUNNING,
+            attempts=F("attempts") + 1,
+            processed_at=timezone.now(),
+        )
+    if not claimed:
+        return None
+    candidate.refresh_from_db()
+    return candidate
+
+
+def _local_day_start():
+    from zoneinfo import ZoneInfo
+
+    tz = ZoneInfo(getattr(settings, "TIME_ZONE", "UTC"))
+    local = timezone.now().astimezone(tz)
+    return local.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(ZoneInfo("UTC"))
+
+
+def daily_outbound_exceeded(phone_number):
+    cap = getattr(settings, "WHATSAPP_DAILY_MESSAGE_CAP", 20)
+    if cap <= 0:
+        return False
+    sent = WhatsAppMessage.objects.filter(
+        phone_number=phone_number, direction="OUT", created_at__gte=_local_day_start()
+    ).count()
+    return sent >= cap
+
+
+def may_reply_within_window(phone_number):
+    """Meta's 24h free-form window: a reply is only allowed while the phone
+    has an inbound message inside the window (we only ever reply to inbound)."""
+    hours = getattr(settings, "WHATSAPP_MESSAGE_WINDOW_HOURS", 24)
+    since = timezone.now() - timezone.timedelta(hours=hours)
+    return WhatsAppMessage.objects.filter(
+        phone_number=phone_number, direction="IN", created_at__gte=since
+    ).exists()
+
+
+def _send_safely(phone_number, text, user, correlation):
+    """Send with window/cap guards, retries, and correlation logging."""
+    if daily_outbound_exceeded(phone_number):
+        logger.warning("whatsapp cap: skipping outbound to %s", phone_number)
+        return
+    if not may_reply_within_window(phone_number):
+        logger.warning(
+            "whatsapp window: cannot reply to %s (no inbound within window)",
+            phone_number,
+        )
+        return
+    try:
+        send_message(phone_number, text, user=user)
+    except WhatsAppError as exc:
+        logger.error("whatsapp send failed corr=%s to=%s: %s",
+                     correlation, phone_number, exc)
+
+def drain_whatsapp_queue(limit=50):
+    processed = 0
+    while processed < limit:
+        task = claim_whatsapp_task()
+        if task is None:
+            break
+        process_whatsapp_task(task)
+        processed += 1
+    return processed
+
+
+def process_whatsapp_task(task):
+    """Handle one queued inbound message outside the web request.
+
+    Never leaks exception text to the user: any unexpected failure sends a
+    generic apology and logs the full traceback under the task correlation id.
+    """
+    correlation = task.public_id
+    task.attempts += 1
+    task.save(update_fields=["attempts"])
+    session = get_session(task.phone_number)
+    user = session.linked_user
+
+    try:
+        if not channel_enabled():
+            logger.info("whatsapp worker: channel disabled; dropping task %s", correlation)
+            task.status = WhatsAppTask.Status.DONE
+            task.processed_at = timezone.now()
+            task.save(update_fields=["status", "processed_at"])
+            return task
+
+        if phone_rate_exceeded(task.phone_number):
+            _send_safely(task.phone_number, RATE_LIMITED_REPLY, user, correlation)
+        else:
+            replies = handle_text(session, task.body)
+            for reply in replies:
+                if reply:
+                    _send_safely(task.phone_number, reply, user, correlation)
+        task.status = WhatsAppTask.Status.DONE
+        task.last_error = ""
+        task.processed_at = timezone.now()
+        task.save(update_fields=["status", "last_error", "processed_at"])
+    except Exception as exc:  
+        logger.exception("whatsapp task failed corr=%s phone=%s", correlation, task.phone_number)
+        task.last_error = f"{type(exc).__name__}: {exc}"[:2000]
+        if task.attempts >= task.max_attempts:
+            task.status = WhatsAppTask.Status.FAILED
+            _send_safely(task.phone_number, GENERIC_APOLOGY, user, correlation)
+        else:
+            task.status = WhatsAppTask.Status.PENDING
+        task.processed_at = timezone.now() if task.status == WhatsAppTask.Status.FAILED else None
+        task.save(update_fields=["status", "last_error", "processed_at"])
+    return task

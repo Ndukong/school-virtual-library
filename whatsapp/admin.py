@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from whatsapp.models import WhatsAppLink, WhatsAppMessage, WhatsAppSession
+from whatsapp.models import (
+    WhatsAppKillSwitch,
+    WhatsAppLink,
+    WhatsAppMessage,
+    WhatsAppSession,
+    WhatsAppTask,
+)
 
 
 @admin.register(WhatsAppLink)
@@ -64,3 +70,36 @@ class WhatsAppMessageAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(WhatsAppTask)
+class WhatsAppTaskAdmin(admin.ModelAdmin):
+    list_display = ("phone_number", "body", "status", "attempts", "created_at", "processed_at")
+    list_filter = ("status",)
+    search_fields = ("phone_number", "body")
+    readonly_fields = ("public_id", "message_id", "phone_number", "body", "status",
+                       "attempts", "last_error", "created_at", "processed_at")
+
+    def get_queryset(self, request):
+        if request.user.is_superuser:
+            return super().get_queryset(request)
+        return super().get_queryset(request).none()
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(WhatsAppKillSwitch)
+class WhatsAppKillSwitchAdmin(admin.ModelAdmin):
+    list_display = ("key", "enabled", "updated_at")
+
+    def get_queryset(self, request):
+        return super().get_queryset(request) if request.user.is_superuser else (
+            super().get_queryset(request).none()
+        )
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser

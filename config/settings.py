@@ -376,6 +376,11 @@ WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
 WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v21.0")
 WHATSAPP_RATE_LIMIT_PER_MINUTE = int(os.getenv("WHATSAPP_RATE_LIMIT_PER_MINUTE", "10"))
 WHATSAPP_LINK_CODE_MINUTES = int(os.getenv("WHATSAPP_LINK_CODE_MINUTES", "15"))
+# WP6 reliability: channel enablement (also admin kill switch), per-phone
+# daily outbound cap, and the Meta free-form reply window in hours.
+WHATSAPP_ENABLED = _env_bool("WHATSAPP_ENABLED", default=True)
+WHATSAPP_DAILY_MESSAGE_CAP = int(os.getenv("WHATSAPP_DAILY_MESSAGE_CAP", "20"))
+WHATSAPP_MESSAGE_WINDOW_HOURS = int(os.getenv("WHATSAPP_MESSAGE_WINDOW_HOURS", "24"))
 
 # PWA (Phase 11). Registers the service worker (its network-first strategy
 # only caches the static shell; authenticated content and files are never

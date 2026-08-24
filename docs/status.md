@@ -116,6 +116,27 @@ pip-audit clean.
 DEPLOYMENT NOTE (live OCR): tesseract/ghostscript not on this box; WP4 live
 OCR path remains verified via the fake engine until binaries are installed.
 
+## Work Package 6 - WhatsApp reliability (2026-08-23, branch wp/6-whatsapp)
+
+- Webhook is now sub-second: it verifies, persists each inbound as a
+  WhatsAppTask (dedup by message_id on WhatsAppMessage), and returns 200.
+- All handling (linking, routing, replies, throttling) happens in the
+  database-backed queue drained by `python manage.py process_whatsapp`
+  (atomic claim + attempt bump; FAILED after max attempts).
+- Never sends exception text: on any handler failure the worker logs the full
+  traceback under the task correlation id (public_id) and the user receives
+  GENERIC_APOLOGY only.
+- Outbound reliability: send_message retries the provider twice internally
+  (tested via urlopen flap), obeys the Meta 24h reply window
+  (WHATSAPP_MESSAGE_WINDOW_HOURS, only replies to recent inbound), and a
+  per-phone daily outbound cap (WHATSAPP_DAILY_MESSAGE_CAP).
+- Admin kill switch: WhatsAppKillSwitch singleton + `whatsapp_switch on|off|
+  status` command; when disabled the webhook drops payloads (still 200) and
+  the worker no-ops.
+
+Gate: ruff 94 (pre-existing only; WP6 files zero); check clean; 374 tests OK
+(3 skipped); check --deploy exit 0; pip-audit clean.
+
 ## Work Package 2 - production settings hardening (2026-08-23, branch
 wp/2-prod-settings)
 
