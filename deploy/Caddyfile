@@ -1,0 +1,11 @@
+# School Virtual Library - Caddy reverse proxy (TLS termination).
+# If DOMAIN points at the LAN name, Caddy serves HTTPS automatically (it uses
+# the local CA for *.local / internal names). Users land on https://$DOMAIN.
+
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy web:8000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+	}
+}

@@ -232,6 +232,34 @@ clean; 416 tests OK (3 skipped); check --deploy exit 0; pip-audit clean;
 migration common.0001 generated, applied from scratch, reversed and re-applied
 on the dev DB, makemigrations --check clean.
 
+## Work Package 10 - Ops / CI / deployment (2026-08-24, branch wp/10-ops)
+
+- CI: `.github/workflows/ci.yml` runs the full gate on every push/PR on both
+  Ubuntu-22.04 (Python 3.12) and Windows-latest (Python 3.10, the dev target):
+  ruff, check (settings_test), makemigrations --check, locale freshness
+  (recompiles with Babel and asserts the committed .mo is unchanged), the full
+  test suite, `check --deploy` under a production env, and pip-audit.
+- Production stack (`deploy/`): docker-compose.prod.yml with PostgreSQL+pgvector
+  (pg16), Redis, the web app (gunicorn + Whitenoise + collectstatic on start,
+  /healthz/ container healthcheck), the two queue workers (process_documents /
+  process_whatsapp --loop), and a Caddy reverse proxy terminating TLS (LAN
+  domain via Caddyfile), plus Dockerfile and a .env.prod.example.
+- Backup/restore: deploy/backup.sh (pg_dump custom-format + media tar to an
+  external drive, nightly systemd timer at Africa/Douala) and deploy/restore.sh
+  (destructive drill: stop app, drop+recreate DB, pg_restore + media restore,
+  bring the stack back with a /healthz/ pass criterion). The restore drill is a
+  once-per-term MANDATORY exercise (deploy/README.md).
+- Contracts held by tests (tests/deploy, +9): compose defines the expected
+  services/healthchecks, every compose + .env.prod.example key is consumed by
+  config/settings.py (or is a compose/Caddy-only key), DATABASE_URL matches
+  dj-database-url, scripts look right (set -eu, pg_dump/pg_restore, BACKUP_DIR),
+  CI runs the gate on both runners with both requirement files, and the compiled
+  French catalog ships in the repo.
+
+Gate: ruff 97 (no new); check clean; 425 tests OK (3 skipped); check --deploy
+exit 0; pip-audit clean; PyYAML added to requirements-dev (stated reason:
+deploy-contract test parses YAML) - never in production.
+
 ## Work Package 2 - production settings hardening (2026-08-23, branch
 wp/2-prod-settings)
 
