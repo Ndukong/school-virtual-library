@@ -34,6 +34,33 @@ project; this file is what is actually true right now.
 8. ~~Silent truncation of user input.~~ **CLOSED in WP1**: questions over
    5000 chars are rejected with a user-facing message, never truncated.
 
+## Work Package 3 - file serving and abuse control (2026-08-23, branch
+wp/3-file-serving)
+
+- Hardened file views: nosniff, same-origin CORP, `private, no-store`, and a
+  sandboxing CSP on inline reads; HTTP Range (206/416), ETag/Last-Modified
+  with If-None-Match/If-Modified-Since (304) so multi-MB PDFs are not
+  re-fetched on seek; X-Accel-Redirect mode (LIBRARY_XACCEL_ENABLED) so the
+  app server stops streaming file bytes behind a reverse proxy.
+- Download abuse control: per-minute burst + per-local-day cap enforced off
+  ResourceAccessEvent (429), superusers exempt; reports page shows today's
+  per-user downloads and flags users over the cap.
+- Watermarking: LICENSED/OWNED inline reads render a sandboxed-iframe page
+  with a name+timestamp footer (streamed via /library/<id>/stream/); other
+  material reads inline unchanged.
+- Login lockout: exponential backoff keyed on username+IP (LoginFailure
+  audit rows + LoginLock), users inside a lock window never reach the auth
+  backend; admin unlock action; success clears the key.
+- Admin password reset for students: temporary password (validator-safe),
+  printable one-time slip (session-held, cleared after render), forced change
+  on first login (LoginView redirect + MustChangePasswordMiddleware blocking
+  all other pages), PasswordReset audit row (who reset whom, completed_at).
+- LoginView.form_valid fixed to authenticate before the forced-change
+  redirect (previously left the user logged out).
+
+Gate: ruff 90 (86 baseline + 4 pre-existing RUF012; WP3 files zero); check
+clean; check --deploy exit 0; 345 tests OK (3 skipped); pip-audit clean.
+
 ## Work Package 2 - production settings hardening (2026-08-23, branch
 wp/2-prod-settings)
 
