@@ -1,15 +1,28 @@
-"""Login lockout services (WP3).
+"""Account security services (WP3).
 
-Exponential backoff keyed on username AND IP. Every failure is audited in
-`LoginFailure`; an active `LoginLock` row is checked before authentication is
-even attempted. Admins can clear locks per user (`reset_user_locks`).
+Login lockout: exponential backoff keyed on username AND IP; every failure is
+audited in `LoginFailure`; an active `LoginLock` row is checked before the
+authentication backend is even asked. Admins can clear locks per user.
+
+Password resets: admins issue a temporary password (returned once for the
+credential slip), set `must_change_password`, and record the audit in
+`PasswordReset`. `complete_password_change` applies a validated new password
+and clears the flag plus the pending reset record.
 """
 
+import secrets
+
 from django.conf import settings
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from accounts.models import LoginFailure, LoginLock
+from accounts.models import LoginFailure, LoginLock, PasswordReset
 
+
+# ---------------------------------------------------------------------------
+# Login lockout
+# ---------------------------------------------------------------------------
 
 def normalize_username(username):
     return (username or "").strip().lower()
@@ -59,3 +72,43 @@ def reset_user_locks(username):
     norm = normalize_username(username)
     LoginFailure.objects.filter(username=norm).delete()
     LoginLock.objects.filter(username=norm).delete()
+
+
+# ---------------------------------------------------------------------------
+# Admin password resets: temp password, forced change, audit
+# ---------------------------------------------------------------------------
+
+_TEMP_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"
+
+
+def generate_temporary_password(length=12):
+    """Generate a usable temporary password (no confusing characters)."""
+    return "".join(secrets.choice(_TEMP_ALPHABET) for _ in range(length))
+
+
+def reset_password(admin_user, target_user):
+    """Issue a temporary password; returns the plaintext once for the
+    credential slip. Records who reset whom in PasswordReset."""
+    while True:
+        temporary = generate_temporary_password()
+        try:
+            validate_password(temporary, user=target_user)
+            break
+        except ValidationError:
+            continue
+    target_user.set_password(temporary)
+    target_user.must_change_password = True
+    target_user.save(update_fields=["password", "must_change_password"])
+    PasswordReset.objects.create(target_user=target_user, admin_user=admin_user)
+    return temporary
+
+
+def complete_password_change(user, new_password):
+    """Validate + apply a password, clearing the forced-change flag."""
+    validate_password(new_password, user=user)
+    user.set_password(new_password)
+    user.must_change_password = False
+    user.save(update_fields=["password", "must_change_password"])
+    PasswordReset.objects.filter(target_user=user, completed_at__isnull=True).update(
+        completed_at=timezone.now()
+    )

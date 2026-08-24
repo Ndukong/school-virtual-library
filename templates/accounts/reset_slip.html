@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Credential slip - School Virtual Library{% endblock %}
+{% block content %}
+  {% if slip %}
+    <div class="card notice">
+      <h1>Credential slip</h1>
+      <p>Print or send this securely. It is shown once only.</p>
+      <dl class="meta-list">
+        <div><dt>Username</dt><dd>{{ slip.username }}</dd></div>
+        <div><dt>Temporary password</dt><dd><strong>{{ slip.temporary }}</strong></dd></div>
+      </dl>
+      <p>This account must change its password at the first login.</p>
+      <button onclick="window.print()" class="btn-primary">Print</button>
+    </div>
+  {% else %}
+    <div class="card notice"><p>The slip has already been shown.</p></div>
+  {% endif %}
+  <p><a href="{% url 'password-reset-list' %}">Back to password reset</a></p>
+{% endblock %}

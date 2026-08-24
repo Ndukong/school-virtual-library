@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -23,9 +24,32 @@ class User(AbstractUser):
         blank=True,
         related_name="users",
     )
+    # Set by admins after a temporary-password reset; login redirects to the
+    # forced password change until cleared (WP3).
+    must_change_password = models.BooleanField(default=False)
 
     def __str__(self):
         return self.get_full_name() or self.username
+
+
+class PasswordReset(models.Model):
+    """Audit record of an admin-issued password reset and its completion."""
+
+    target_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="password_resets"
+    )
+    admin_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="issued_password_resets"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        status = "completed" if self.completed_at else "pending"
+        return f"{self.admin_user} reset {self.target_user} ({status})"
 
 class LoginFailure(models.Model):
     """Audit record of a failed login attempt (WP3 lockout trail)."""

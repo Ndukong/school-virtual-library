@@ -1,17 +1,28 @@
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView as DjangoLoginView
+from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
+from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import TemplateView, View
 
 from accounts.permissions import (
+    AdminOrTeacherRequiredMixin,
     AdminRequiredMixin,
     StudentRequiredMixin,
     TeacherRequiredMixin,
     is_admin,
     is_teacher,
 )
-from accounts.services import check_login_lock, client_ip, record_failed_login, reset_login_state
+from accounts.services import (
+    check_login_lock,
+    client_ip,
+    complete_password_change,
+    record_failed_login,
+    reset_login_state,
+    reset_password,
+)
 
 
 class HomeView(View):
@@ -52,7 +63,12 @@ class LoginView(DjangoLoginView):
     def form_valid(self, form):
         user = form.get_user()
         reset_login_state(user.username, client_ip(self.request))
-        return super().form_valid(form)
+        if not getattr(user, "must_change_password", False):
+            return super().form_valid(form)
+        from django.contrib.auth import login as auth_login
+
+        auth_login(self.request, user)
+        return HttpResponseRedirect(reverse("force-password-change"))
 
     def form_invalid(self, form):
         if not getattr(self, "_blocked", False):
@@ -133,4 +149,86 @@ class LogoutAllDevicesView(LoginRequiredMixin, View):
                 session.delete()
                 deleted += 1
         messages.success(request, f"Signed out {deleted} other session(s).")
+        return redirect("profile")
+
+
+class ResetPasswordListView(AdminOrTeacherRequiredMixin, TemplateView):
+    """Admin/teacher page listing school users for temporary-password resets."""
+
+    template_name = "accounts/reset_list.html"
+
+    def get_context_data(self, **kwargs):
+        from django.contrib.auth import get_user_model
+
+        context = super().get_context_data(**kwargs)
+        school = self.request.user.school
+        users = get_user_model().objects.filter(school=school).order_by("username")
+        context["users"] = users
+        return context
+
+
+class ResetPasswordRunView(AdminOrTeacherRequiredMixin, View):
+    def _target(self):
+        from django.contrib.auth import get_user_model
+
+        return get_user_model().objects.filter(
+            username=(self.request.POST.get("username") or "").strip(),
+            school=self.request.user.school,
+        ).first()
+
+    def post(self, request):
+        target = self._target()
+        if target is None:
+            messages.error(request, "No matching user in this school.")
+            return redirect("password-reset-list")
+        temporary = reset_password(request.user, target)
+        request.session["_credential_slip"] = {
+            "username": target.username,
+            "temporary": temporary,
+            "must_change": True,
+        }
+        return redirect("password-reset-slip")
+
+
+class ResetPasswordSlipView(AdminOrTeacherRequiredMixin, TemplateView):
+    """One-time printable credential slip; content is cleared after render."""
+
+    template_name = "accounts/reset_slip.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        slip = self.request.session.pop("_credential_slip", None)
+        context["slip"] = slip
+        return context
+
+
+class ForcePasswordChangeView(LoginRequiredMixin, TemplateView):
+    template_name = "accounts/force_password_change.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not getattr(request.user, "must_change_password", False):
+            return redirect("profile")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.setdefault("form", kwargs.pop("form", None))
+        if context["form"] is None:
+            from accounts.forms import ForcePasswordChangeForm
+
+            context["form"] = ForcePasswordChangeForm(user=self.request.user)
+        return context
+
+    def post(self, request):
+        from accounts.forms import ForcePasswordChangeForm
+
+        form = ForcePasswordChangeForm(request.POST, user=request.user)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(form=form))
+        new_password = form.cleaned_data["new_password1"]
+        complete_password_change(request.user, new_password)
+        from django.contrib.auth import update_session_auth_hash
+
+        update_session_auth_hash(request, request.user)
+        messages.success(request, "Password updated.")
         return redirect("profile")

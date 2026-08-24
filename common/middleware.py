@@ -2,6 +2,10 @@
 
 IdleSessionMiddleware logs out users whose session has been idle past
 SESSION_IDLE_SECONDS (shared lab machines, AGENTS section 6).
+
+MustChangePasswordMiddleware forces users with a temporary password to change
+it before using the rest of the platform (their only allowed pages are the
+change page and logout).
 """
 
 import time
@@ -11,6 +15,23 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import resolve_url
 
 SESSION_KEY_LAST_SEEN = "_last_seen"
+
+_ALLOWED_PREFIXES = ("/static/", "/admin/")
+_ALLOWED_PATHS = ("/password/change/", "/logout/", "/logout-all/", "/login/")
+
+
+class MustChangePasswordMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = getattr(request, "user", None)
+        if user and user.is_authenticated and getattr(user, "must_change_password", False):
+            path = request.path
+            if path in _ALLOWED_PATHS or path.startswith(_ALLOWED_PREFIXES):
+                return self.get_response(request)
+            return HttpResponseRedirect(resolve_url("force-password-change"))
+        return self.get_response(request)
 
 
 class IdleSessionMiddleware:

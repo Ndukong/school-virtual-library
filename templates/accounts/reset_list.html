@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Reset passwords - School Virtual Library{% endblock %}
+{% block content %}
+  <h1>Reset a password</h1>
+  <p class="subtitle">Generates a temporary password (printed on a one-time
+  slip). The user must change it at their next login.</p>
+  {% if users %}
+    <ul class="resource-list">
+      {% for user in users %}
+        <li class="card resource-card">
+          <div class="resource-head">
+            <span class="resource-title">{{ user.get_full_name|default:user.username }}</span>
+            <span class="badge">{{ user.get_role_display }}</span>
+          </div>
+          <p class="meta">{{ user.username }}{% if user.school %} &middot; {{ user.school.name }}{% endif %}
+            {% if user.must_change_password %} &middot; <span class="error">pending change</span>{% endif %}</p>
+          <form method="post" action="{% url 'password-reset-run' %}" class="inline-form">
+            {% csrf_token %}
+            <input type="hidden" name="username" value="{{ user.username }}">
+            <button type="submit" class="btn-secondary">Reset password</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="card notice"><p>No users in this school yet.</p></div>
+  {% endif %}
+{% endblock %}

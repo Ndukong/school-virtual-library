@@ -1,11 +1,31 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from accounts.models import LoginFailure, LoginLock, User
+from accounts.models import LoginFailure, LoginLock, PasswordReset, User
 from accounts.permissions import is_admin
 from accounts.services import reset_user_locks
 from students.admin import StudentInline
 from teachers.admin import TeacherInline
+
+
+@admin.register(PasswordReset)
+class PasswordResetAdmin(admin.ModelAdmin):
+    list_display = ("admin_user", "target_user", "created_at", "completed_at")
+    search_fields = ("target_user__username", "admin_user__username")
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        if request.user.school_id:
+            return qs.filter(target_user__school=request.user.school)
+        return qs.none()
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 @admin.action(description="Unlock login for selected users")
@@ -42,7 +62,7 @@ class LoginFailureAdmin(admin.ModelAdmin):
 
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
-    list_display = ("username", "email", "role", "school", "is_staff", "is_active")
+    list_display = ("username", "email", "role", "school", "is_staff", "is_active", "must_change_password")
     list_filter = ("role", "school", "is_staff", "is_active")
     search_fields = ("username", "first_name", "last_name", "email")
 
@@ -52,7 +72,7 @@ class UserAdmin(DjangoUserAdmin):
     fieldsets = (
         (None, {"fields": ("username", "password")}),
         ("Personal info", {"fields": ("first_name", "last_name", "email")}),
-        ("School and role", {"fields": ("role", "school")}),
+        ("School and role", {"fields": ("role", "school", "must_change_password")}),
         (
             "Permissions",
             {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")},
@@ -75,7 +95,7 @@ class UserAdmin(DjangoUserAdmin):
         (None, {"fields": ("username", "password")}),
         ("Personal info", {"fields": ("first_name", "last_name", "email")}),
         ("School and role", {"fields": ("role",)}),
-        ("Status", {"fields": ("is_active",)}),
+        ("Status", {"fields": ("is_active", "must_change_password")}),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
     )
     school_admin_add_fieldsets = (

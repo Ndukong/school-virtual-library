@@ -8,7 +8,12 @@ from django.utils import timezone
 from accounts.admin import UserAdmin
 from accounts.models import LoginFailure, LoginLock, User
 from accounts.permissions import has_role, is_admin, is_student, is_teacher
-from accounts.services import check_login_lock, reset_user_locks
+from accounts.services import (
+    check_login_lock,
+    complete_password_change,
+    reset_password,
+    reset_user_locks,
+)
 from schools.models import School
 
 PASSWORD = "ComplexPass123!"
@@ -355,3 +360,95 @@ class LoginLockoutTests(TestCase):
         reset_user_locks("lockstudent")
         blocked, _ = check_login_lock("lockstudent", "127.0.0.1")
         self.assertFalse(blocked)
+
+
+class PasswordResetTests(TestCase):
+    def setUp(self):
+        self.school = make_school("Reset School")
+        self.admin = make_user("resetadmin", User.Role.ADMIN, self.school, is_staff=True)
+        self.student = make_user("resetstudent", User.Role.STUDENT, self.school)
+        self.other_student = make_user("otherstudent", User.Role.STUDENT, self.school)
+        self.other_school_admin = make_user(
+            "otherresetadmin", User.Role.ADMIN, make_school("Other Reset"), is_staff=True
+        )
+
+    def test_reset_sets_temp_password_and_audits(self):
+        from accounts.models import PasswordReset
+
+        temporary = reset_password(self.admin, self.student)
+        self.student.refresh_from_db()
+        self.assertTrue(self.student.must_change_password)
+        self.assertTrue(self.student.check_password(temporary))
+        reset = PasswordReset.objects.get(target_user=self.student)
+        self.assertEqual(reset.admin_user, self.admin)
+        self.assertIsNone(reset.completed_at)
+
+    def test_logged_out_temp_login_redirects_to_forced_change(self):
+        temporary = reset_password(self.admin, self.student)
+        client = Client()
+        response = client.post(
+            reverse("login"), {"username": "resetstudent", "password": temporary}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("force-password-change"))
+
+    def test_forced_change_clears_flag_and_invalidates_temp(self):
+        temporary = reset_password(self.admin, self.student)
+        client = Client()
+        client.post(reverse("login"), {"username": "resetstudent", "password": temporary})
+        page = client.get(reverse("force-password-change"))
+        self.assertEqual(page.status_code, 200)
+        response = client.post(
+            reverse("force-password-change"),
+            {"new_password1": "NewSecurePass123!", "new_password2": "NewSecurePass123!"},
+            follow=True,
+        )
+        self.student.refresh_from_db()
+        self.assertFalse(self.student.must_change_password)
+        self.assertTrue(self.student.check_password("NewSecurePass123!"))
+        self.assertTrue(
+            self.student.password_resets.filter(completed_at__isnull=False).exists()
+        )
+        # Temporary password no longer works.
+        client.logout()
+        failed = client.post(reverse("login"), {"username": "resetstudent", "password": temporary})
+        self.assertEqual(failed.status_code, 200)
+
+    def test_must_change_middleware_redirects_everywhere_else(self):
+        reset_password(self.admin, self.student)
+        client = Client()
+        client.force_login(self.student)
+        self.assertEqual(client.get(reverse("library-list")).status_code, 302)
+        self.assertEqual(
+            client.get(reverse("library-list")).url, reverse("force-password-change")
+        )
+
+    def test_student_cannot_use_reset_area(self):
+        client = Client()
+        client.force_login(self.student)
+        self.assertEqual(client.get(reverse("password-reset-list")).status_code, 403)
+
+    def test_admin_reset_flow_via_views_with_one_time_slip(self):
+        client = Client()
+        client.force_login(self.admin)
+        response = client.post(
+            reverse("password-reset-run"), {"username": "otherstudent"}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("password-reset-slip"))
+        slip_page = client.get(reverse("password-reset-slip"))
+        self.assertContains(slip_page, "otherstudent")
+        # One-time only.
+        second = client.get(reverse("password-reset-slip"))
+        self.assertNotContains(second, "otherstudent")
+
+    def test_cross_school_staff_cannot_reset(self):
+        client = Client()
+        client.force_login(self.other_school_admin)
+        response = client.post(
+            reverse("password-reset-run"), {"username": "resetstudent"}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("password-reset-list"))
+        self.student.refresh_from_db()
+        self.assertFalse(self.student.must_change_password)
