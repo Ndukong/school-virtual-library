@@ -1,0 +1,586 @@
+# School Virtual Library - French catalog (Work Package 7).
+#
+# This catalog is hand-maintained because the project's Windows dev image has
+# no GNU gettext binaries (`msgfmt`/`xgettext` are absent). It is compiled to
+# locale/fr/LC_MESSAGES/django.mo with Babel (dev dependency) - see
+# tools/compile_messages.py. On a machine WITH GNU gettext, the standard
+# workflow still applies: `makemessages` refreshes this file and
+# `compilemessages` rebuilds django.mo.
+#
+# msgids must match Django's template `{% trans %}` / `{% blocktrans %}` and
+# Python `gettext` source strings EXACTLY.
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: svl 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-24 00:00+0000\n"
+"PO-Revision-Date: 2026-08-24 00:00+0000\n"
+"Last-Translator: School Virtual Library\n"
+"Language-Team: School Virtual Library (fr)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: fr\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+# --- base.html -------------------------------------------------------------
+msgid "Approved school learning resources, AI tutoring, and practice."
+msgstr "Ressources scolaires approuvées, tuteur IA et exercices."
+
+msgid "School Virtual Library"
+msgstr "Bibliothèque virtuelle de l'école"
+
+msgid "Skip to content"
+msgstr "Aller au contenu"
+
+msgid "Main"
+msgstr "Principal"
+
+msgid "Home"
+msgstr "Accueil"
+
+msgid "Library"
+msgstr "Bibliothèque"
+
+msgid "Search"
+msgstr "Rechercher"
+
+msgid "Practice"
+msgstr "Exercices"
+
+msgid "AI Tutor"
+msgstr "Tuteur IA"
+
+msgid "Profile"
+msgstr "Profil"
+
+msgid "Question Bank"
+msgstr "Banque de questions"
+
+msgid "Exams"
+msgstr "Examens"
+
+msgid "Reports"
+msgstr "Rapports"
+
+msgid "English"
+msgstr "Anglais"
+
+msgid "French"
+msgstr "Français"
+
+msgid "Log out"
+msgstr "Déconnexion"
+
+# --- registration/login.html ----------------------------------------------
+msgid "Log in"
+msgstr "Connexion"
+
+msgid "Your username and password didn't match. Please try again."
+msgstr "Votre nom d'utilisateur et votre mot de passe ne correspondent pas. Veuillez réessayer."
+
+msgid "Username"
+msgstr "Nom d'utilisateur"
+
+msgid "Password"
+msgstr "Mot de passe"
+
+# --- accounts/dashboard_student.html ---------------------------------------
+msgid "Student dashboard"
+msgstr "Tableau de bord élève"
+
+msgid "School:"
+msgstr "École :"
+
+msgid "Class:"
+msgstr "Classe :"
+
+msgid "Not assigned yet"
+msgstr "Pas encore assignée"
+
+msgid "Admission number:"
+msgstr "Numéro d'admission :"
+
+msgid "No student profile is linked to your account yet. Ask your school administrator."
+msgstr "Aucun profil élève n'est encore lié à votre compte. Demandez à l'administrateur de l'école."
+
+# --- accounts/dashboard_teacher.html ---------------------------------------
+msgid "Teacher dashboard"
+msgstr "Tableau de bord enseignant"
+
+msgid "Your subjects"
+msgstr "Vos matières"
+
+msgid "No subjects assigned yet. Ask your school administrator."
+msgstr "Aucune matière assignée pour l'instant. Demandez à l'administrateur de l'école."
+
+msgid "No teacher profile is linked to your account yet. Ask your school administrator."
+msgstr "Aucun profil enseignant n'est encore lié à votre compte. Demandez à l'administrateur de l'école."
+
+# --- accounts/dashboard_admin.html -----------------------------------------
+msgid "Administration"
+msgstr "Administration"
+
+msgid "School administration"
+msgstr "Administration de l'école"
+
+msgid "Classes"
+msgstr "Classes"
+
+msgid "Subjects"
+msgstr "Matières"
+
+msgid "Teachers"
+msgstr "Enseignants"
+
+msgid "Students"
+msgstr "Élèves"
+
+msgid "Manage people and academic structure in the <a href=\"/admin/\">admin area</a>."
+msgstr "Gérez les personnes et la structure académique dans la <a href=\"/admin/\">zone d'administration</a>."
+
+msgid "Your account is not linked to a school yet. Ask the platform administrator to assign one."
+msgstr "Votre compte n'est encore lié à aucune école. Demandez à l'administrateur de la plateforme d'en assigner une."
+
+# --- accounts/profile.html -------------------------------------------------
+msgid "Admission:"
+msgstr "Admission :"
+
+msgid "Quick links"
+msgstr "Liens rapides"
+
+msgid "My practice progress"
+msgstr "Ma progression d'exercices"
+
+msgid "My AI study materials"
+msgstr "Mes supports d'étude IA"
+
+msgid "Sign out of all devices"
+msgstr "Se déconnecter de tous les appareils"
+
+msgid "Not assigned"
+msgstr "Non assignée"
+
+# --- library/resource_list.html --------------------------------------------
+msgid "Title, author, description"
+msgstr "Titre, auteur, description"
+
+msgid "Type"
+msgstr "Type"
+
+msgid "Language"
+msgstr "Langue"
+
+msgid "All types"
+msgstr "Tous les types"
+
+msgid "All languages"
+msgstr "Toutes les langues"
+
+msgid "Filter"
+msgstr "Filtrer"
+
+msgid "Upload a resource"
+msgstr "Ajouter une ressource"
+
+msgid "Previous"
+msgstr "Précédent"
+
+msgid "Next"
+msgstr "Suivant"
+
+msgid "No resources found."
+msgstr "Aucune ressource trouvée."
+
+msgid "Page %(page)s of %(total)s"
+msgstr "Page %(page)s sur %(total)s"
+
+# --- library/resource_detail.html ------------------------------------------
+msgid "Author"
+msgstr "Auteur"
+
+msgid "Publisher"
+msgstr "Éditeur"
+
+msgid "Edition"
+msgstr "Édition"
+
+msgid "Year"
+msgstr "Année"
+
+msgid "Subject"
+msgstr "Matière"
+
+msgid "Class"
+msgstr "Classe"
+
+msgid "Licensing"
+msgstr "Licence"
+
+msgid "Status"
+msgstr "État"
+
+msgid "Chapters"
+msgstr "Chapitres"
+
+msgid "Read"
+msgstr "Lire"
+
+msgid "Download"
+msgstr "Télécharger"
+
+msgid "Ask AI Tutor about this book"
+msgstr "Demander au tuteur IA à propos de ce livre"
+
+msgid "Study tools"
+msgstr "Outils d'étude"
+
+# --- library/resource_form.html --------------------------------------------
+msgid "Accepted format: PDF (up to 100 MB). Only upload material the school is licensed to distribute."
+msgstr "Format accepté : PDF (jusqu'à 100 Mo). N'ajoutez que du matériel que l'école est autorisée à distribuer."
+
+msgid "Title"
+msgstr "Titre"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Who can read this?"
+msgstr "Qui peut lire ce document ?"
+
+msgid "Publication year"
+msgstr "Année de publication"
+
+msgid "Licensing status"
+msgstr "Statut de licence"
+
+msgid "Content language"
+msgstr "Langue du contenu"
+
+msgid "PDF file"
+msgstr "Fichier PDF"
+
+msgid "Upload"
+msgstr "Envoyer"
+
+msgid "Curriculum"
+msgstr "Programme"
+
+# --- search/results.html ---------------------------------------------------
+msgid "Search the library"
+msgstr "Rechercher dans la bibliothèque"
+
+msgid "Ask about any topic..."
+msgstr "Interrogez sur n'importe quel sujet..."
+
+msgid "All subjects"
+msgstr "Toutes les matières"
+
+msgid "All classes"
+msgstr "Toutes les classes"
+
+msgid "semantic"
+msgstr "sémantique"
+
+msgid "%(n)s result for &ldquo;%(query)s&rdquo;"
+msgid_plural "%(n)s results for &ldquo;%(query)s&rdquo;"
+msgstr[0] "%(n)s résultat pour &ldquo;%(query)s&rdquo;"
+msgstr[1] "%(n)s résultats pour &ldquo;%(query)s&rdquo;"
+
+msgid "No results for &ldquo;%(query)s&rdquo;. Try different words, or check that the material has finished processing."
+msgstr "Aucun résultat pour &ldquo;%(query)s&rdquo;. Essayez d'autres mots, ou vérifiez que le document a fini d'être traité."
+
+# --- ai/ask.html -----------------------------------------------------------
+msgid "Asking about the book:"
+msgstr "Question sur le livre :"
+
+msgid "Asking about the chapter:"
+msgstr "Question sur le chapitre :"
+
+msgid "Answers about school material are grounded in your library and cite their sources."
+msgstr "Les réponses sur le matériel scolaire s'appuient sur votre bibliothèque et citent leurs sources."
+
+msgid "Your question"
+msgstr "Votre question"
+
+msgid "e.g. Explain electromagnetic induction with an example."
+msgstr "ex. Expliquez l'induction électromagnétique avec un exemple."
+
+msgid "Ask"
+msgstr "Poser"
+
+msgid "General mode: answers are not grounded in school materials."
+msgstr "Mode général : les réponses ne s'appuient pas sur les supports scolaires."
+
+msgid "Scope options: ask from the <a href=\"%(ask_url)s\">whole library</a>, or open a book or chapter in the <a href=\"%(library_url)s\">library</a> and use its AI Tutor link to focus on that material."
+msgstr "Options de portée : interrogez depuis la <a href=\"%(ask_url)s\">bibliothèque entière</a>, ou ouvrez un livre ou un chapitre dans la <a href=\"%(library_url)s\">bibliothèque</a> et utilisez son lien Tuteur IA pour cibler ce matériel."
+
+msgid "Need notes instead of answers? Use the"
+msgstr "Besoin de notes plutôt que de réponses ? Utilisez les"
+
+msgid "study tools"
+msgstr "outils d'étude"
+
+# --- ai/answer.html --------------------------------------------------------
+msgid "Answer"
+msgstr "Réponse"
+
+msgid "prompt"
+msgstr "prompt"
+
+msgid "Question"
+msgstr "Question"
+
+msgid "Answered without the AI service (no matching material or service unavailable)."
+msgstr "Réponse sans le service IA (aucun support correspondant ou service indisponible)."
+
+msgid "Sources used"
+msgstr "Sources utilisées"
+
+msgid "Sources"
+msgstr "Sources"
+
+msgid "Only the sources listed above were used. If something is missing from them, the material may not cover your question."
+msgstr "Seules les sources listées ci-dessus ont été utilisées. Si quelque chose manque, le matériel ne couvre peut-être pas votre question."
+
+msgid "Ask another question"
+msgstr "Poser une autre question"
+
+msgid "pages %(a)s&ndash;%(b)s"
+msgstr "pages %(a)s&ndash;%(b)s"
+
+msgid "page %(p)s"
+msgstr "page %(p)s"
+
+# --- learning/practice_home.html -------------------------------------------
+msgid "Topic (optional)"
+msgstr "Sujet (facultatif)"
+
+msgid "Length"
+msgstr "Nombre de questions"
+
+msgid "Start quiz"
+msgstr "Commencer le quiz"
+
+msgid "Practice a published exam"
+msgstr "S'entraîner sur un examen publié"
+
+msgid "Start"
+msgstr "Commencer"
+
+msgid "My recent attempts"
+msgstr "Mes tentatives récentes"
+
+msgid "View my progress"
+msgstr "Voir ma progression"
+
+msgid "%(marks)s marks"
+msgstr "%(marks)s points"
+
+msgid "score %(earned)s/%(possible)s"
+msgstr "score %(earned)s/%(possible)s"
+
+# --- learning/attempt_form.html --------------------------------------------
+msgid "Quiz"
+msgstr "Quiz"
+
+msgid "Practice quiz"
+msgstr "Quiz d'entraînement"
+
+msgid "Answer everything, then submit. Model answers appear after submission."
+msgstr "Répondez à tout, puis validez. Les réponses modèles apparaissent après la validation."
+
+msgid "Submit answers"
+msgstr "Valider les réponses"
+
+msgid "Type your answer..."
+msgstr "Tapez votre réponse..."
+
+msgid "%(q)s question"
+msgid_plural "%(q)s questions"
+msgstr[0] "%(q)s question"
+msgstr[1] "%(q)s questions"
+
+# --- learning/attempt_result.html ------------------------------------------
+msgid "Results"
+msgstr "Résultats"
+
+msgid "Correct"
+msgstr "Correct"
+
+msgid "self-marked"
+msgstr "auto-évalué"
+
+msgid "Incorrect"
+msgstr "Incorrect"
+
+msgid "Awaiting your marking"
+msgstr "En attente de votre évaluation"
+
+msgid "compare with the scheme below."
+msgstr "comparez avec le barème ci-dessous."
+
+msgid "I got it right"
+msgstr "J'ai bon"
+
+msgid "I got it wrong"
+msgstr "J'ai faux"
+
+msgid "Your answer:"
+msgstr "Votre réponse :"
+
+msgid "(blank)"
+msgstr "(vide)"
+
+msgid "Correct answer:"
+msgstr "Bonne réponse :"
+
+msgid "Model answer:"
+msgstr "Réponse modèle :"
+
+msgid "Marking scheme:"
+msgstr "Barème :"
+
+msgid "My progress"
+msgstr "Ma progression"
+
+msgid "Practice again"
+msgstr "Refaire des exercices"
+
+msgid "%(earned)s / %(possible)s marks &middot; %(percent)s%"
+msgstr "%(earned)s / %(possible)s points &middot; %(percent)s%"
+
+# --- learning/progress.html ------------------------------------------------
+msgid "Submitted quizzes:"
+msgstr "Quiz soumis :"
+
+msgid "Submit a quiz to start tracking progress."
+msgstr "Soumettez un quiz pour commencer à suivre votre progression."
+
+msgid "Topics to revise"
+msgstr "Sujets à réviser"
+
+msgid "find material"
+msgstr "chercher du matériel"
+
+msgid "make revision notes"
+msgstr "faire des fiches de révision"
+
+msgid "Recent attempts"
+msgstr "Tentatives récentes"
+
+msgid "Back to practice"
+msgstr "Retour aux exercices"
+
+msgid "%(s)s: %(a)s attempt(s), average %(avg)s%"
+msgstr "%(s)s : %(a)s tentative(s), moyenne %(avg)s%"
+
+msgid "accuracy %(a)s%"
+msgstr "précision %(a)s%"
+
+msgid "over %(t)s question(s)"
+msgstr "sur %(t)s question(s)"
+
+# --- Python gettext (views / services / prompts) ----------------------------
+msgid "Too many failed attempts. Try again in %(seconds)d second(s)."
+msgstr "Trop de tentatives échouées. Réessayez dans %(seconds)d seconde(s)."
+
+msgid "Signed out %(count)d other session(s)."
+msgstr "%(count)d autre(s) session(s) terminée(s)."
+
+msgid "Book not found in your library."
+msgstr "Livre introuvable dans votre bibliothèque."
+
+msgid "Chapter not found in your library."
+msgstr "Chapitre introuvable dans votre bibliothèque."
+
+msgid "Questions are limited to %(maximum)d characters (you sent %(sent)d)."
+msgstr "Les questions sont limitées à %(maximum)d caractères (vous en avez envoyé %(sent)d)."
+
+msgid "I could not find any relevant material in the selected scope. Try widening the scope, using different wording, or checking that the material has finished processing. I will not guess at content that is not in the library."
+msgstr "Je n'ai trouvé aucun support pertinent dans la sélection. Élargissez la sélection, reformulez votre question, ou vérifiez que le document a fini d'être traité. Je ne devine jamais un contenu qui n'est pas dans la bibliothèque."
+
+msgid "The AI service is temporarily unavailable. Please try again shortly."
+msgstr "Le service d'IA est temporairement indisponible. Veuillez réessayer dans quelques instants."
+
+msgid "No relevant material was found for this %(kind)s in the selected scope. Widen the scope or choose material that has finished processing."
+msgstr "Aucun support pertinent n'a été trouvé pour ce %(kind)s dans la sélection. Élargissez la sélection ou choisissez du matériel qui a fini d'être traité."
+
+msgid "Unknown study material kind: %(kind)s"
+msgstr "Type de support d'étude inconnu : %(kind)s"
+
+msgid "Summary"
+msgstr "Résumé"
+
+msgid "Revision notes"
+msgstr "Fiches de révision"
+
+msgid "Definitions and formulae"
+msgstr "Définitions et formules"
+
+msgid "Practice questions"
+msgstr "Questions d'entraînement"
+
+msgid "Respond in French. Keep passages quoted from the sources verbatim - never translate quoted text, titles, or citations."
+msgstr "Répondez en français. Conservez les passages cités des sources mot pour mot - ne traduisez jamais le texte cité, les titres ou les citations."
+
+msgid "Respond in English. Keep passages quoted from the sources verbatim - never translate quoted text, titles, or citations."
+msgstr "Répondez en anglais. Conservez les passages cités des sources mot pour mot - ne traduisez jamais le texte cité, les titres ou les citations."
+
+# --- learning/services.py ---------------------------------------------------
+msgid "Attempt not found."
+msgstr "Tentative introuvable."
+
+msgid "Not your attempt."
+msgstr "Ce n'est pas votre tentative."
+
+msgid "No approved questions are available for that filter yet. Try a different subject/topic."
+msgstr "Aucune question approuvée n'est encore disponible pour ce filtre. Essayez une autre matière ou un autre sujet."
+
+msgid "That exam is not available for your school."
+msgstr "Cet examen n'est pas disponible pour votre école."
+
+msgid "Only published exams can be practiced."
+msgstr "Seuls les examens publiés peuvent être pratiqués."
+
+msgid "That exam is set for a different class."
+msgstr "Cet examen est prévu pour une autre classe."
+
+msgid "That exam has no questions."
+msgstr "Cet examen ne contient aucune question."
+
+msgid "This attempt was already submitted."
+msgstr "Cette tentative a déjà été soumise."
+
+msgid "Submit the attempt before self-marking."
+msgstr "Soumettez la tentative avant de vous auto-évaluer."
+
+msgid "Objective questions are graded automatically."
+msgstr "Les questions objectives sont corrigées automatiquement."
+
+msgid "Already marked."
+msgstr "Déjà évalué."
+
+# --- library views / forms --------------------------------------------------
+msgid "Download limit reached. Please try again later."
+msgstr "Limite de téléchargement atteinte. Veuillez réessayer plus tard."
+
+msgid "School storage quota reached; ask an administrator."
+msgstr "Quota de stockage de l'école atteint ; demandez à un administrateur."
+
+msgid "Choose English or French as the content language."
+msgstr "Choisissez l'anglais ou le français comme langue du contenu."
+
+msgid "Please choose a valid quiz setup."
+msgstr "Veuillez choisir une configuration de quiz valide."
+
+# --- learning/forms.py -----------------------------------------------------
+msgid "3 questions"
+msgstr "3 questions"
+
+msgid "5 questions"
+msgstr "5 questions"
+
+msgid "10 questions"
+msgstr "10 questions"

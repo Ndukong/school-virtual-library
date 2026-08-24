@@ -1,11 +1,22 @@
 from django import forms
+from django.utils.translation import gettext_lazy as _
 
 from library.models import Resource
-from library.services import validate_upload
+from library.services import language_code, validate_upload
 from schools.models import School
 
 
 class ResourceForm(forms.ModelForm):
+    # Controlled content-language selector. Stored as a normalized code; the
+    # clean_language step also accepts legacy free-text spellings (WP7).
+    language = forms.CharField(
+        required=False,
+        widget=forms.Select(
+            choices=[("en", _("English")), ("fr", _("French"))],
+            attrs={"autocomplete": "off"},
+        ),
+    )
+
     class Meta:
         model = Resource
         fields = [
@@ -52,3 +63,10 @@ class ResourceForm(forms.ModelForm):
         if uploaded:
             validate_upload(uploaded)
         return uploaded
+
+    def clean_language(self):
+        raw = self.cleaned_data.get("language") or "en"
+        code = language_code(raw)
+        if not code:
+            raise forms.ValidationError(_("Choose English or French as the content language."))
+        return code

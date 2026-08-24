@@ -54,6 +54,11 @@ class Question(TimeStampedModel):
 
     public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     school = models.ForeignKey(School, on_delete=models.PROTECT, related_name="questions")
+    # Content language so practice and exam generation can serve each section
+    # in its own language (WP7).
+    language = models.CharField(
+        max_length=10, choices=settings.LANGUAGES, default="en"
+    )
     subject = models.ForeignKey(
         Subject, on_delete=models.PROTECT, null=True, blank=True, related_name="questions"
     )

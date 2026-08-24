@@ -19,6 +19,7 @@ class SearchView(LoginRequiredMixin, TemplateView):
             "school_class": request.GET.get("class") or None,
             "resource_type": request.GET.get("type") or None,
             "resource": request.GET.get("resource") or None,
+            "language": request.GET.get("language") or None,
         }
 
         user = request.user

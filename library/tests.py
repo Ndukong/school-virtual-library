@@ -511,3 +511,44 @@ class StorageQuotaTests(LibraryTestBase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Resource.objects.filter(title="Quota Fine").exists())
+
+
+class ResourceLanguageFilterTests(LibraryTestBase):
+    """WP7: content-language tagging filters what a user sees."""
+
+    def test_list_filters_by_language(self):
+        self.make_resource(title="English Guide")
+        french_doc = self.make_resource(title="Guide français")
+        french_doc.language = "fr"
+        french_doc.save(update_fields=["language"])
+
+        self.client.force_login(self.student_a)
+        response = self.client.get(reverse("library-list") + "?language=fr")
+        self.assertContains(response, "Guide français")
+        self.assertNotContains(response, "English Guide")
+
+        response = self.client.get(reverse("library-list") + "?language=en")
+        self.assertContains(response, "English Guide")
+        self.assertNotContains(response, "Guide français")
+
+    def test_upload_form_normalizes_language_to_code(self):
+        self.client.force_login(self.teacher_a)
+        response = self.client.post(reverse("library-upload"), {
+            "title": "Bilingual doc",
+            "resource_type": Resource.ResourceType.NOTES,
+            "licensing_status": Resource.LicensingStatus.TEACHER_CREATED,
+            "access_policy": Resource.AccessPolicy.SCHOOL,
+            "language": "français",
+            "file": SimpleUploadedFile("ok.pdf", b"%PDF-1.4"),
+        })
+        self.assertEqual(response.status_code, 302)
+        saved = Resource.objects.get(title="Bilingual doc")
+        self.assertEqual(saved.language, "fr")
+
+    def test_language_code_maps_synonyms(self):
+        from library.services import language_code
+
+        self.assertEqual(language_code("en"), "en")
+        self.assertEqual(language_code("FRENCH"), "fr")
+        self.assertEqual(language_code("anglais"), "en")
+        self.assertIsNone(language_code("swahili"))

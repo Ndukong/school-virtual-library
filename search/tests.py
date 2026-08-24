@@ -370,3 +370,35 @@ class BenchmarkCommandTests(TestCase):
         self.assertIn("p95=", output)
         self.assertIn("keyword", output)
         self.assertIn("hybrid", output)
+
+class LanguageScopeTests(SearchTestBase):
+    """WP7: retrieval can be restricted to one content language."""
+
+    def test_keyword_scope_filters_resource_language(self):
+        en = self.make_processed_resource(
+            ("A unique concept about electric motors.",), title="EN Guide",
+        )
+        fr = self.make_processed_resource(
+            ("Un concept unique sur les moteurs electriques.",), title="FR Guide",
+        )
+        fr.language = "fr"
+        fr.save(update_fields=["language"])
+
+        fr_results = keyword_search(self.student_a, "unique concept", scope={"language": "fr"})
+        self.assertTrue(fr_results)
+        self.assertTrue(all(r.chunk.resource_id == fr.pk for r in fr_results))
+
+        en_results = keyword_search(self.student_a, "unique concept", scope={"language": "en"})
+        self.assertTrue(en_results)
+        self.assertTrue(all(r.chunk.resource_id == en.pk for r in en_results))
+
+    def test_language_scope_drops_cross_language_matches(self):
+        self.make_processed_resource(("unique idea about circuits.",), title="Only EN")
+        results = keyword_search(self.student_a, "unique", scope={"language": "fr"})
+        self.assertEqual(results, [])
+
+    def test_view_exposes_language_filter(self):
+        client = Client()
+        client.force_login(self.student_a)
+        response = client.get(reverse("search"))
+        self.assertContains(response, 'name="language"')

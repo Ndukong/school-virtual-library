@@ -1,44 +1,45 @@
 {% extends "base.html" %}
-{% block title %}Upload a resource - School Virtual Library{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Upload a resource" %} - {% trans "School Virtual Library" %}{% endblock %}
 {% block content %}
-  <h1>Upload a resource</h1>
-  <p class="subtitle">Accepted format: PDF (up to 100 MB). Only upload material the school is licensed to distribute.</p>
+  <h1>{% trans "Upload a resource" %}</h1>
+  <p class="subtitle">{% trans "Accepted format: PDF (up to 100 MB). Only upload material the school is licensed to distribute." %}</p>
   {% if form.non_field_errors %}
     <div class="error" role="alert">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
   {% endif %}
   <form method="post" enctype="multipart/form-data" class="card upload-form">
     {% csrf_token %}
     {{ form.school.label_tag }}{{ form.school }}{{ form.school.errors }}
-    <label for="{{ form.title.id_for_label }}">Title *</label>
+    <label for="{{ form.title.id_for_label }}">{% trans "Title" %} *</label>
     {{ form.title }}{{ form.title.errors }}
-    <label for="{{ form.resource_type.id_for_label }}">Type</label>
+    <label for="{{ form.resource_type.id_for_label }}">{% trans "Type" %}</label>
     {{ form.resource_type }}{{ form.resource_type.errors }}
-    <label for="{{ form.description.id_for_label }}">Description</label>
+    <label for="{{ form.description.id_for_label }}">{% trans "Description" %}</label>
     {{ form.description }}{{ form.description.errors }}
-    <label for="{{ form.subject.id_for_label }}">Subject</label>
+    <label for="{{ form.subject.id_for_label }}">{% trans "Subject" %}</label>
     {{ form.subject }}{{ form.subject.errors }}
-    <label for="{{ form.school_class.id_for_label }}">Class</label>
+    <label for="{{ form.school_class.id_for_label }}">{% trans "Class" %}</label>
     {{ form.school_class }}{{ form.school_class.errors }}
-    <label for="{{ form.author.id_for_label }}">Author</label>
+    <label for="{{ form.author.id_for_label }}">{% trans "Author" %}</label>
     {{ form.author }}
-    <label for="{{ form.publisher.id_for_label }}">Publisher</label>
+    <label for="{{ form.publisher.id_for_label }}">{% trans "Publisher" %}</label>
     {{ form.publisher }}
-    <label for="{{ form.edition.id_for_label }}">Edition</label>
+    <label for="{{ form.edition.id_for_label }}">{% trans "Edition" %}</label>
     {{ form.edition }}
     <label for="{{ form.isbn.id_for_label }}">ISBN</label>
     {{ form.isbn }}
-    <label for="{{ form.curriculum.id_for_label }}">Curriculum</label>
+    <label for="{{ form.curriculum.id_for_label }}">{% trans "Curriculum" %}</label>
     {{ form.curriculum }}
-    <label for="{{ form.language.id_for_label }}">Language</label>
+    <label for="{{ form.language.id_for_label }}">{% trans "Content language" %}</label>
     {{ form.language }}
-    <label for="{{ form.publication_year.id_for_label }}">Publication year</label>
+    <label for="{{ form.publication_year.id_for_label }}">{% trans "Publication year" %}</label>
     {{ form.publication_year }}{{ form.publication_year.errors }}
-    <label for="{{ form.licensing_status.id_for_label }}">Licensing status</label>
+    <label for="{{ form.licensing_status.id_for_label }}">{% trans "Licensing status" %}</label>
     {{ form.licensing_status }}
-    <label for="{{ form.access_policy.id_for_label }}">Who can read this?</label>
+    <label for="{{ form.access_policy.id_for_label }}">{% trans "Who can read this?" %}</label>
     {{ form.access_policy }}
-    <label for="{{ form.file.id_for_label }}">PDF file *</label>
+    <label for="{{ form.file.id_for_label }}">{% trans "PDF file" %} *</label>
     {{ form.file }}{{ form.file.errors }}
-    <button type="submit">Upload</button>
+    <button type="submit">{% trans "Upload" %}</button>
   </form>
 {% endblock %}

@@ -1,10 +1,16 @@
 from django import forms
+from django.conf import settings
+from django.utils.translation import gettext_lazy as _
 
 from subjects.models import Subject
 
 
 class QuizStartForm(forms.Form):
-    SIZE_CHOICES = [(3, "3 questions"), (5, "5 questions"), (10, "10 questions")]
+    SIZE_CHOICES = [
+        (3, _("3 questions")),
+        (5, _("5 questions")),
+        (10, _("10 questions")),
+    ]
 
     subject = forms.ModelChoiceField(queryset=Subject.objects.none(), required=False)
     topic = forms.CharField(
@@ -13,6 +19,11 @@ class QuizStartForm(forms.Form):
         widget=forms.TextInput(attrs={"autocomplete": "off"}),
     )
     size = forms.TypedChoiceField(choices=SIZE_CHOICES, coerce=int, initial=5)
+    language = forms.ChoiceField(
+        choices=[("", _("All languages")), *settings.LANGUAGES],
+        required=False,
+        initial="",
+    )
 
     def __init__(self, *args, student=None, **kwargs):
         super().__init__(*args, **kwargs)

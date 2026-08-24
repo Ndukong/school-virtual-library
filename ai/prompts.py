@@ -3,7 +3,15 @@
 Prompts are explicit, scoped, and resistant to prompt injection: retrieved
 document text is always framed as DATA inside delimiters and never treated
 as instructions.
+
+WP7: the system prompts can be extended per-call with a language instruction
+(user-language awareness), and user-facing fallback messages are translated
+through Django gettext so a francophone student is answered in their own
+language instead of a hard-coded English sentence.
 """
+
+from django.utils.translation import gettext as _
+from django.utils.translation import override
 
 DATA_OPEN = "<retrieved_documents>"
 DATA_CLOSE = "</retrieved_documents>"
@@ -34,9 +42,55 @@ TASK: Produce a study aid from the retrieved documents only.
   what is missing instead of inventing content.
 - Label nothing as teacher-approved; this is AI-generated study support."""
 
-INSUFFICIENT_MESSAGE = (
-    "I could not find any relevant material in the selected scope. "
-    "Try widening the scope, using different wording, or checking that the "
-    "material has finished processing. I will not guess at content that is "
-    "not in the library."
+_FR_INSTRUCTION = _(
+    "Respond in French. Keep passages quoted from the sources verbatim - "
+    "never translate quoted text, titles, or citations."
 )
+_EN_INSTRUCTION = _(
+    "Respond in English. Keep passages quoted from the sources verbatim - "
+    "never translate quoted text, titles, or citations."
+)
+
+
+def language_instruction(language):
+    """One sentence appended to a system prompt steering the answer language.
+
+    The sentence is translated into the target language while quoted source
+    passages stay verbatim regardless (data, never translation).
+    """
+    code = (language or "").split("-")[0]
+    if code == "fr":
+        with override("fr"):
+            return str(_FR_INSTRUCTION)
+    return str(_EN_INSTRUCTION)
+
+
+def insufficient_message(language=None):
+    """Honest no-material refusal, localized for the requesting user."""
+    code = (language or "").split("-")[0]
+    if code == "fr":
+        with override("fr"):
+            return _(
+                "Je n'ai trouvé aucun support pertinent dans la sélection. "
+                "Élargissez la sélection, reformulez votre question, ou vérifiez "
+                "que le document a fini d'être traité. Je ne devine jamais un "
+                "contenu qui n'est pas dans la bibliothèque."
+            )
+    return _(
+        "I could not find any relevant material in the selected scope. "
+        "Try widening the scope, using different wording, or checking that the "
+        "material has finished processing. I will not guess at content that is "
+        "not in the library."
+    )
+
+
+def service_unavailable_message(language=None):
+    """Transient-outage message stored on the interaction (localized)."""
+    code = (language or "").split("-")[0]
+    if code == "fr":
+        with override("fr"):
+            return _(
+                "Le service d'IA est temporairement indisponible. "
+                "Veuillez réessayer dans quelques instants."
+            )
+    return _("The AI service is temporarily unavailable. Please try again shortly.")

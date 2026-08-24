@@ -1,30 +1,33 @@
 {% extends "base.html" %}
-{% block title %}Practice - School Virtual Library{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Practice" %} - {% trans "School Virtual Library" %}{% endblock %}
 {% block content %}
-  <h1>Practice</h1>
+  <h1>{% trans "Practice" %}</h1>
 
   <form method="post" action="{% url 'practice-start' %}" class="filters card">
     {% csrf_token %}
-    <label for="{{ form.subject.id_for_label }}">Subject</label>
+    <label for="{{ form.subject.id_for_label }}">{% trans "Subject" %}</label>
     {{ form.subject }}
-    <label for="{{ form.topic.id_for_label }}">Topic (optional)</label>
+    <label for="{{ form.topic.id_for_label }}">{% trans "Topic (optional)" %}</label>
     {{ form.topic }}
-    <label for="{{ form.size.id_for_label }}">Length</label>
+    <label for="{{ form.size.id_for_label }}">{% trans "Length" %}</label>
     {{ form.size }}
-    <button type="submit">Start quiz</button>
+    <label for="{{ form.language.id_for_label }}">{% trans "Language" %}</label>
+    {{ form.language }}
+    <button type="submit">{% trans "Start quiz" %}</button>
   </form>
 
   {% if exams %}
     <section class="card">
-      <h2>Practice a published exam</h2>
+      <h2>{% trans "Practice a published exam" %}</h2>
       <ul class="plain-list">
         {% for exam in exams %}
           <li style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
-            <span>{{ exam.title }} &middot; {{ exam.subject.name }} &middot; {{ exam.total_marks }} marks</span>
+            <span>{{ exam.title }} &middot; {{ exam.subject.name }} &middot; {% blocktrans with marks=exam.total_marks %}{{ marks }} marks{% endblocktrans %}</span>
             <form method="post" action="{% url 'practice-exam-start' %}" class="inline-form">
               {% csrf_token %}
               <input type="hidden" name="exam" value="{{ exam.public_id }}">
-              <button type="submit" class="btn-secondary">Start</button>
+              <button type="submit" class="btn-secondary">{% trans "Start" %}</button>
             </form>
           </li>
         {% endfor %}
@@ -34,7 +37,7 @@
 
   {% if recent_attempts %}
     <section class="card">
-      <h2>My recent attempts</h2>
+      <h2>{% trans "My recent attempts" %}</h2>
       <ul class="plain-list">
         {% for attempt in recent_attempts %}
           <li>
@@ -43,11 +46,11 @@
               &middot; {{ attempt.created_at|date:"Y-m-d H:i" }}
             </a>
             &middot; <strong>{{ attempt.get_status_display }}</strong>
-            {% if attempt.status == "SUBMITTED" %}&middot; score {{ attempt.earned_marks }}/{{ attempt.possible_marks }}{% endif %}
+            {% if attempt.status == "SUBMITTED" %}&middot; {% blocktrans with earned=attempt.earned_marks possible=attempt.possible_marks %}score {{ earned }}/{{ possible }}{% endblocktrans %}{% endif %}
           </li>
         {% endfor %}
       </ul>
-      <p><a href="{% url 'practice-progress' %}">View my progress</a></p>
+      <p><a href="{% url 'practice-progress' %}">{% trans "View my progress" %}</a></p>
     </section>
   {% endif %}
 {% endblock %}

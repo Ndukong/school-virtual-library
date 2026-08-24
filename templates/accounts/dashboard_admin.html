@@ -1,19 +1,20 @@
 {% extends "base.html" %}
-{% block title %}Administration - School Virtual Library{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Administration" %} - {% trans "School Virtual Library" %}{% endblock %}
 {% block content %}
-  <h1>School administration</h1>
+  <h1>{% trans "School administration" %}</h1>
   {% if school %}
     <p class="subtitle">{{ school.name }}</p>
     <ul class="stat-grid">
-      <li class="card stat"><span class="stat-number">{{ counts.classes }}</span><span class="stat-label">Classes</span></li>
-      <li class="card stat"><span class="stat-number">{{ counts.subjects }}</span><span class="stat-label">Subjects</span></li>
-      <li class="card stat"><span class="stat-number">{{ counts.teachers }}</span><span class="stat-label">Teachers</span></li>
-      <li class="card stat"><span class="stat-number">{{ counts.students }}</span><span class="stat-label">Students</span></li>
+      <li class="card stat"><span class="stat-number">{{ counts.classes }}</span><span class="stat-label">{% trans "Classes" %}</span></li>
+      <li class="card stat"><span class="stat-number">{{ counts.subjects }}</span><span class="stat-label">{% trans "Subjects" %}</span></li>
+      <li class="card stat"><span class="stat-number">{{ counts.teachers }}</span><span class="stat-label">{% trans "Teachers" %}</span></li>
+      <li class="card stat"><span class="stat-number">{{ counts.students }}</span><span class="stat-label">{% trans "Students" %}</span></li>
     </ul>
-    <p>Manage people and academic structure in the <a href="/admin/">admin area</a>.</p>
+    <p>{% blocktrans %}Manage people and academic structure in the <a href="/admin/">admin area</a>.{% endblocktrans %}</p>
   {% else %}
     <div class="card notice">
-      <p>Your account is not linked to a school yet. Ask the platform administrator to assign one.</p>
+      <p>{% trans "Your account is not linked to a school yet. Ask the platform administrator to assign one." %}</p>
     </div>
   {% endif %}
 {% endblock %}

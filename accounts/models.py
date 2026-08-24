@@ -17,6 +17,11 @@ class User(AbstractUser):
         STUDENT = "STUDENT", "Student"
 
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.STUDENT)
+    # UI + AI answer language (WP7). Stays in sync with LANGUAGES; set from the
+    # header language switcher, defaulted to English.
+    language = models.CharField(
+        max_length=10, choices=settings.LANGUAGES, default="en"
+    )
     school = models.ForeignKey(
         "schools.School",
         on_delete=models.PROTECT,

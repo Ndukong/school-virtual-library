@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
+from django.utils.translation import gettext as _
 from django.views.generic import TemplateView, View
 
 from accounts.permissions import StudentRequiredMixin
@@ -50,7 +51,7 @@ class QuizStartView(StudentRequiredMixin, View):
     def post(self, request):
         form = QuizStartForm(request.POST, student=request.user)
         if not form.is_valid():
-            messages.error(request, "Please choose a valid quiz setup.")
+            messages.error(request, _("Please choose a valid quiz setup."))
             return redirect("practice-home")
         try:
             attempt = start_quiz(
@@ -58,6 +59,7 @@ class QuizStartView(StudentRequiredMixin, View):
                 subject=form.cleaned_data.get("subject") or None,
                 topic=form.cleaned_data.get("topic") or "",
                 size=form.cleaned_data.get("size"),
+                language=form.cleaned_data.get("language") or None,
             )
         except PracticeError as exc:
             messages.error(request, str(exc))

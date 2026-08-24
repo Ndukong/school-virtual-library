@@ -137,6 +137,41 @@ OCR path remains verified via the fake engine until binaries are installed.
 Gate: ruff 94 (pre-existing only; WP6 files zero); check clean; 374 tests OK
 (3 skipped); check --deploy exit 0; pip-audit clean.
 
+## Work Package 7 - Bilingual en/fr (2026-08-24, branch wp/7-i18n)
+
+- Infrastructure: LANGUAGES + LOCALE_PATHS + LocaleMiddleware; a per-user
+  User.language field (additive migrations accounts.0004, question_bank.0002);
+  UserLanguageMiddleware overrides the request language from the signed-in
+  account (falls back to the django_language cookie, Django 5.2 style); a
+  /language/ switcher persists the choice to the account and writes the
+  language cookie, safe same-origin next validation (anonymous visitors can
+  switch so the login screen is bilingual too).
+- AI language-awareness: the RAG and study system prompts are extended per
+  call with a language instruction (rag-v2 / study-v2); the "no material"
+  refusal and the transient-outage message are localized; the answer cache
+  key now includes the user language so a cached English answer never leaks
+  to a francophone student. Quoted source passages stay verbatim.
+- Content tagging: Resource.language free text is normalized to en/fr on
+  upload (form select + synonym mapping for legacy rows); Question.language
+  added; library list, search and practice can all filter by language
+  (permission filtering still happens before every retrieval).
+- Catalog: French final catalog locale/fr/LC_MESSAGES/django.po (hand
+  maintained; the Windows dev image has no GNU gettext), compiled to
+  django.mo via tools/compile_messages.py (Babel, dev-only dependency).
+  Core user flows are translated (base/nav, login, dashboards, profile,
+  library list/detail/upload, search, AI ask/answer, practice home/attempt/
+  progress). Deep teacher/admin pages (exam builder, reports, question list,
+  admin area) remain English for a later pass.
+- Tests: +20 (switcher persistence + cookie, French UI on /profile/, French
+  login for anonymous switchers, French system-prompt instruction via a
+  recording provider, French + English refusals offline, rag-v2 prompt
+  version, resource language list/upload normalization, search language
+  scope, question language practice filter, practice language selector).
+
+Gate: ruff 97 (no new findings from WP7 files); check clean; 394 tests OK
+(3 skipped); check --deploy exit 0; pip-audit clean; migrations reversible
+and generated from scratch, makemigrations --check clean.
+
 ## Work Package 2 - production settings hardening (2026-08-23, branch
 wp/2-prod-settings)
 

@@ -16,4 +16,5 @@ urlpatterns = [
     path("reset-password/run/", views.ResetPasswordRunView.as_view(), name="password-reset-run"),
     path("reset-password/slip/", views.ResetPasswordSlipView.as_view(), name="password-reset-slip"),
     path("password/change/", views.ForcePasswordChangeView.as_view(), name="force-password-change"),
+    path("language/", views.SetLanguageView.as_view(), name="set-language"),
 ]

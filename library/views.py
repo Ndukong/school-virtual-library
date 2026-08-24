@@ -2,6 +2,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
+from django.utils.translation import gettext as _
 from django.views.generic import CreateView, DetailView, ListView, View
 
 from accounts.permissions import AdminOrTeacherRequiredMixin
@@ -12,6 +13,8 @@ from library.forms import ResourceForm
 from library.models import Resource, ResourceAccessEvent
 from library.services import (
     download_exceeded,
+    language_code,
+    language_search_values,
     upload_within_quota,
     user_can_read_resource,
     visible_resources,
@@ -41,14 +44,23 @@ class ResourceListView(LoginRequiredMixin, ListView):
         resource_type = filters.get("type") or ""
         if resource_type in Resource.ResourceType.values:
             queryset = queryset.filter(resource_type=resource_type)
+        language = language_code(filters.get("language") or "")
+        if language:
+            queryset = queryset.filter(language__in=language_search_values(language))
         return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["resource_types"] = Resource.ResourceType.choices
+        context["languages"] = (
+            ("", _("All languages")),
+            ("en", _("English")),
+            ("fr", _("French")),
+        )
         context["current_filters"] = {
             "q": self.request.GET.get("q", ""),
             "type": self.request.GET.get("type", ""),
+            "language": self.request.GET.get("language", ""),
         }
         context["can_upload"] = user_can_upload(self.request.user)
         return context
@@ -96,7 +108,7 @@ class _ResourceFileView(LoginRequiredMixin, View):
             exceeded = download_exceeded(request.user)
             if exceeded:
                 return HttpResponse(
-                    "Download limit reached. Please try again later.",
+                    _("Download limit reached. Please try again later."),
                     status=429,
                     content_type="text/plain",
                 )
@@ -172,7 +184,9 @@ class ResourceUploadView(AdminOrTeacherRequiredMixin, CreateView):
             resource.school = self.request.user.school
         uploaded = form.cleaned_data["file"]
         if not upload_within_quota(resource.school, uploaded.size):
-            form.add_error("file", "School storage quota reached; ask an administrator.")
+            form.add_error(
+                "file", _("School storage quota reached; ask an administrator.")
+            )
             return self.form_invalid(form)
         resource.store_file(uploaded)
         resource.processing_status = Resource.ProcessingStatus.UPLOADED

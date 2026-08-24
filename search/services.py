@@ -17,7 +17,7 @@ from django.db.models import Q
 from ai.providers import AIError, get_provider
 from documents.models import ChunkEmbedding, DocumentChunk
 from library.models import Resource
-from library.services import visible_resources
+from library.services import language_search_values, visible_resources
 
 
 @dataclass
@@ -44,6 +44,11 @@ def _candidate_chunks(user, scope):
         "resource_type": lambda qs, value: (
             qs.filter(resource__resource_type=value)
             if value in Resource.ResourceType.values
+            else qs
+        ),
+        "language": lambda qs, value: (
+            qs.filter(resource__language__in=language_search_values(value))
+            if value in {"en", "fr"}
             else qs
         ),
     }

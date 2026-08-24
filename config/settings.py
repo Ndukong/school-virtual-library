@@ -135,11 +135,15 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "common.middleware.IdleSessionMiddleware",
     "common.middleware.MustChangePasswordMiddleware",
+    # After the auth stack so it can override the session language with the
+    # signed-in user's saved preference (WP7 bilingual UI).
+    "common.middleware.UserLanguageMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -212,7 +216,20 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "en"
+
+# WP7 bilingual: the school serves anglophone and francophone sections, so the
+# UI and AI answers follow the user's language (per-user preference, with a
+# session fallback for the login screen). Content itself (resources, questions)
+# is tagged en/fr so each section can filter what it sees.
+LANGUAGES = [
+    ("en", "English"),
+    ("fr", "Français"),
+]
+
+# Compiled catalog: locale/fr/LC_MESSAGES/django.mo (built from django.po with
+# Babel, since the Windows dev image has no GNU gettext binaries).
+LOCALE_PATHS = [BASE_DIR / "locale"]
 
 # School is in Cameroon; every date-boundary query runs in local time.
 TIME_ZONE = "Africa/Douala"
@@ -305,8 +322,10 @@ SEARCH_PGVECTOR_DIM = int(os.getenv("SEARCH_PGVECTOR_DIM", "768"))
 # answer must cite only the sources actually provided in the context.
 RAG_TOP_K = 8
 RAG_MAX_CONTEXT_CHARS = 6000
-RAG_PROMPT_VERSION = "rag-v1"
-STUDY_PROMPT_VERSION = "study-v1"
+# v2: system prompt now adds a user-language instruction (WP7); the version
+# participates in answer-cache keys so a switch invalidates stale wording.
+RAG_PROMPT_VERSION = "rag-v2"
+STUDY_PROMPT_VERSION = "study-v2"
 RAG_USE_CACHE = _env_bool("RAG_USE_CACHE", default=True)
 RAG_CACHE_TTL = int(os.getenv("RAG_CACHE_TTL", "86400"))
 AI_EMBEDDING_QUERY_CACHE_TTL = int(os.getenv("AI_EMBEDDING_QUERY_CACHE_TTL", "86400"))

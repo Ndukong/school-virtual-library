@@ -468,3 +468,93 @@ class AISchoolBudgetTests(TestCase):
 
         for _ in range(3):
             enforce_budget(self.school)
+
+
+class LanguageAwareAiTests(RagTestBase):
+    """WP7: a francophone user is answered in French (instruction + refusals)."""
+
+    def _recording_provider(self):
+        provider = mock.MagicMock()
+        provider.model = "mock-chat-small"
+
+        def generate(prompt, system=None):
+            provider.calls.append((prompt, system))
+            return GenerateResult(
+                text="[rec] " + prompt[:80], model="mock-chat-small",
+                tokens_in=10, tokens_out=8,
+            )
+
+        provider.generate.side_effect = generate
+        provider.calls = []
+        return provider
+
+    @override_settings(RAG_USE_CACHE=False)
+    def test_french_user_gets_french_answer_instruction(self):
+        self.student_a.language = "fr"
+        self.student_a.save(update_fields=["language"])
+        self.make_ready_resource()
+        provider = self._recording_provider()
+
+        ask(
+            self.student_a,
+            "Explain electromagnetic induction with a unique coil example.",
+            chat_provider=provider,
+        )
+        self.assertEqual(len(provider.calls), 1)
+        _prompt, system = provider.calls[0]
+        self.assertIn("Respond in French", system)
+
+    @override_settings(RAG_USE_CACHE=False)
+    def test_english_user_gets_english_answer_instruction(self):
+        self.make_ready_resource()
+        provider = self._recording_provider()
+
+        ask(
+            self.student_a,
+            "Explain electromagnetic induction with a unique coil example.",
+            chat_provider=provider,
+        )
+        _prompt, system = provider.calls[0]
+        self.assertIn("Respond in English", system)
+
+    def test_french_user_insufficient_refusal_is_french_and_offline(self):
+        self.student_a.language = "fr"
+        self.student_a.save(update_fields=["language"])
+        empty_book = self._empty_visible_resource()
+
+        interaction = ask(
+            self.student_a, "any question at all",
+            scope=AIInteraction.Scope.BOOK,
+            resource_public_id=str(empty_book.public_id),
+        )
+        self.assertFalse(interaction.used_provider)
+        self.assertTrue(
+            interaction.answer.startswith("Je n'ai trouvé aucun support pertinent"),
+            interaction.answer,
+        )
+
+    def test_english_user_insufficient_refusal_is_english(self):
+        empty_book = self._empty_visible_resource()
+        interaction = ask(
+            self.student_a, "any question at all",
+            scope=AIInteraction.Scope.BOOK,
+            resource_public_id=str(empty_book.public_id),
+        )
+        self.assertFalse(interaction.used_provider)
+        self.assertIn("could not find any relevant material", interaction.answer)
+
+    def _empty_visible_resource(self):
+        resource = Resource.objects.create(
+            school=self.school_a,
+            title="Empty notes",
+            uploaded_by=self.teacher_a,
+            resource_type=Resource.ResourceType.NOTES,
+            access_policy=Resource.AccessPolicy.SCHOOL,
+        )
+        self.assertFalse(resource.chunks.exists())
+        return resource
+
+    def test_prompt_version_is_v2(self):
+        self.make_ready_resource()
+        interaction = ask(self.student_a, "Explain a unique coil fact please")
+        self.assertEqual(interaction.prompt_version, "rag-v2")

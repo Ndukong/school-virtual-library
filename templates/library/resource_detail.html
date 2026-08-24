@@ -1,27 +1,28 @@
 {% extends "base.html" %}
-{% block title %}{{ resource.title }} - School Virtual Library{% endblock %}
+{% load i18n %}
+{% block title %}{{ resource.title }} - {% trans "School Virtual Library" %}{% endblock %}
 {% block content %}
   <h1>{{ resource.title }}</h1>
   <p class="subtitle">{{ resource.get_resource_type_display }} &middot; {{ resource.school.name }}</p>
 
   <div class="card">
     <dl class="meta-list">
-      {% if resource.author %}<div><dt>Author</dt><dd>{{ resource.author }}</dd></div>{% endif %}
-      {% if resource.publisher %}<div><dt>Publisher</dt><dd>{{ resource.publisher }}</dd></div>{% endif %}
-      {% if resource.edition %}<div><dt>Edition</dt><dd>{{ resource.edition }}</dd></div>{% endif %}
+      {% if resource.author %}<div><dt>{% trans "Author" %}</dt><dd>{{ resource.author }}</dd></div>{% endif %}
+      {% if resource.publisher %}<div><dt>{% trans "Publisher" %}</dt><dd>{{ resource.publisher }}</dd></div>{% endif %}
+      {% if resource.edition %}<div><dt>{% trans "Edition" %}</dt><dd>{{ resource.edition }}</dd></div>{% endif %}
       {% if resource.isbn %}<div><dt>ISBN</dt><dd>{{ resource.isbn }}</dd></div>{% endif %}
-      {% if resource.publication_year %}<div><dt>Year</dt><dd>{{ resource.publication_year }}</dd></div>{% endif %}
-      {% if resource.subject %}<div><dt>Subject</dt><dd>{{ resource.subject }}</dd></div>{% endif %}
-      {% if resource.school_class %}<div><dt>Class</dt><dd>{{ resource.school_class }}</dd></div>{% endif %}
-      <div><dt>Licensing</dt><dd>{{ resource.get_licensing_status_display }}</dd></div>
-      {% if can_upload %}<div><dt>Status</dt><dd>{{ resource.get_processing_status_display }}</dd></div>{% endif %}
+      {% if resource.publication_year %}<div><dt>{% trans "Year" %}</dt><dd>{{ resource.publication_year }}</dd></div>{% endif %}
+      {% if resource.subject %}<div><dt>{% trans "Subject" %}</dt><dd>{{ resource.subject }}</dd></div>{% endif %}
+      {% if resource.school_class %}<div><dt>{% trans "Class" %}</dt><dd>{{ resource.school_class }}</dd></div>{% endif %}
+      <div><dt>{% trans "Licensing" %}</dt><dd>{{ resource.get_licensing_status_display }}</dd></div>
+      {% if can_upload %}<div><dt>{% trans "Status" %}</dt><dd>{{ resource.get_processing_status_display }}</dd></div>{% endif %}
     </dl>
     {% if resource.description %}<p>{{ resource.description }}</p>{% endif %}
   </div>
 
   {% if chapters %}
-    <section aria-label="Chapters" class="card">
-      <h2>Chapters</h2>
+    <section aria-label="{% trans 'Chapters' %}" class="card">
+      <h2>{% trans "Chapters" %}</h2>
       <ul class="plain-list chapter-list">
         {% for chapter in chapters %}
           <li>
@@ -41,10 +42,10 @@
 
   {% if resource.file %}
     <div class="btn-row">
-      <a class="btn-primary" href="{% url 'library-read' resource.public_id %}" target="_blank" rel="noopener">Read</a>
-      <a class="btn-secondary" href="{% url 'library-download' resource.public_id %}">Download</a>
-      <a class="btn-secondary" href="{% url 'ai-ask' %}?book={{ resource.public_id }}">Ask AI Tutor about this book</a>
-      <a class="btn-secondary" href="{% url 'ai-study' %}?book={{ resource.public_id }}&kind=REVISION_NOTES">Study tools</a>
+      <a class="btn-primary" href="{% url 'library-read' resource.public_id %}" target="_blank" rel="noopener">{% trans "Read" %}</a>
+      <a class="btn-secondary" href="{% url 'library-download' resource.public_id %}">{% trans "Download" %}</a>
+      <a class="btn-secondary" href="{% url 'ai-ask' %}?book={{ resource.public_id }}">{% trans "Ask AI Tutor about this book" %}</a>
+      <a class="btn-secondary" href="{% url 'ai-study' %}?book={{ resource.public_id }}&kind=REVISION_NOTES">{% trans "Study tools" %}</a>
     </div>
   {% endif %}
 {% endblock %}

@@ -8,11 +8,14 @@ and never written into the question bank (that is Phase 7 with approval).
 """
 
 from django.conf import settings
+from django.utils.translation import gettext as _
 
 from ai.models import AIGeneration, AIInteraction
 from ai.prompts import (
     LIBRARIAN_SYSTEM_PROMPT,
     STUDY_ADDENDUM,
+    language_instruction,
+    service_unavailable_message,
 )
 from ai.providers import AIError, get_chat_provider
 from ai.rag import build_context, resolve_scope, sanitize_citations, sources_for
@@ -70,13 +73,14 @@ def _scope_target_resource(user, scope, resource_public_id=None, chapter_id=None
     return None
 
 
-def _insufficient(kind):
+def _insufficient(kind, language=None):
+    kind_label = _(AIGeneration.Kind(kind).label)
     return AIGeneration(
         kind=kind,
         content=(
-            f"No relevant material was found for this {AIGeneration.Kind(kind).label.lower()} "
-            "in the selected scope. Widen the scope or choose material that has "
-            "finished processing."
+            _("No relevant material was found for this %(kind)s in the selected "
+              "scope. Widen the scope or choose material that has finished "
+              "processing.") % {"kind": kind_label}
         ),
         used_provider=False,
     )
@@ -102,9 +106,10 @@ def generate_study_material(user, kind, scope=AIInteraction.Scope.LIBRARY,
                             topic="", chat_provider=None):
     """Create one AIGeneration of the requested kind. Returns the saved row."""
     if kind not in AIGeneration.Kind.values:
-        raise ValueError(f"Unknown study material kind: {kind}")
+        raise ValueError(_("Unknown study material kind: %(kind)s") % {"kind": kind})
 
     check_rate_limit(user)
+    language = getattr(user, "language", "") or getattr(settings, "LANGUAGE_CODE", "en")
     scope_label, search_scope = resolve_scope(
         user, scope, resource_public_id, chapter_id
     )
@@ -130,12 +135,12 @@ def generate_study_material(user, kind, scope=AIInteraction.Scope.LIBRARY,
         scope=scope_label,
         source_resource=_scope_target_resource(user, scope_label, resource_public_id, chapter_id),
         topic=topic.strip()[:300],
-        prompt_version=getattr(settings, "STUDY_PROMPT_VERSION", "study-v1"),
+        prompt_version=getattr(settings, "STUDY_PROMPT_VERSION", "study-v2"),
         retrieved_count=len(results),
     )
 
     if not results:
-        fallback = _insufficient(kind)
+        fallback = _insufficient(kind, language)
         generation.content = fallback.content
         generation.used_provider = False
         generation.save()
@@ -152,14 +157,14 @@ def generate_study_material(user, kind, scope=AIInteraction.Scope.LIBRARY,
         from ai.context import school_context
 
         enforce_budget(user.school)
+        instruction = language_instruction(language)
         with school_context(user.school):
             result = provider.generate(
-                f"{context}\n\n{task}", system=STUDY_SYSTEM_PROMPT
+                f"{context}\n\n{task}",
+                system=f"{STUDY_SYSTEM_PROMPT}\n\n{instruction}",
             )
     except AIError as exc:
-        generation.content = (
-            "The AI service is temporarily unavailable. Please try again shortly."
-        )
+        generation.content = service_unavailable_message(language)
         generation.used_provider = False
         generation.save()
         raise AIError(str(exc)) from exc

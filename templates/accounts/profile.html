@@ -1,35 +1,36 @@
 {% extends "base.html" %}
-{% block title %}Profile - School Virtual Library{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Profile" %} - {% trans "School Virtual Library" %}{% endblock %}
 {% block content %}
-  <h1>Profile</h1>
+  <h1>{% trans "Profile" %}</h1>
   <div class="card">
     <p><strong>{{ user.get_full_name|default:user.username }}</strong>
       &middot; {{ user.get_role_display }}</p>
-    {% if school %}<p>School: {{ school.name }}</p>{% endif %}
+    {% if school %}<p>{% trans "School:" %} {{ school.name }}</p>{% endif %}
     {% if student_profile %}
-      <p>Class: {{ student_profile.school_class.name|default:"Not assigned" }}
-        &middot; Admission: {{ student_profile.admission_number }}</p>
+      <p>{% trans "Class:" %} {{ student_profile.school_class.name|default:_("Not assigned") }}
+        &middot; {% trans "Admission:" %} {{ student_profile.admission_number }}</p>
     {% endif %}
   </div>
 
   <div class="card">
-    <h2>Quick links</h2>
+    <h2>{% trans "Quick links" %}</h2>
     <ul class="plain-list">
       {% if user.role == "STUDENT" %}
-        <li><a href="{% url 'practice-progress' %}">My practice progress</a></li>
-        <li><a href="{% url 'ai-study-mine' %}">My AI study materials</a></li>
+        <li><a href="{% url 'practice-progress' %}">{% trans "My practice progress" %}</a></li>
+        <li><a href="{% url 'ai-study-mine' %}">{% trans "My AI study materials" %}</a></li>
       {% endif %}
-      <li><a href="{% url 'library-list' %}">Library</a></li>
-      <li><a href="{% url 'search' %}">Search</a></li>
-      <li><a href="{% url 'ai-ask' %}">AI Tutor</a></li>
+      <li><a href="{% url 'library-list' %}">{% trans "Library" %}</a></li>
+      <li><a href="{% url 'search' %}">{% trans "Search" %}</a></li>
+      <li><a href="{% url 'ai-ask' %}">{% trans "AI Tutor" %}</a></li>
       {% if user.role == "TEACHER" or user.role == "ADMIN" or user.is_superuser %}
-        <li><a href="{% url 'question-list' %}">Question Bank</a></li>
-        <li><a href="{% url 'exam-list' %}">Exams</a></li>
+        <li><a href="{% url 'question-list' %}">{% trans "Question Bank" %}</a></li>
+        <li><a href="{% url 'exam-list' %}">{% trans "Exams" %}</a></li>
       {% endif %}
     </ul>
     <form method="post" action="{% url 'logout-all' %}" class="inline-form">
       {% csrf_token %}
-      <button type="submit" class="btn-secondary">Sign out of all devices</button>
+      <button type="submit" class="btn-secondary">{% trans "Sign out of all devices" %}</button>
     </form>
   </div>
 {% endblock %}

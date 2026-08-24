@@ -47,7 +47,7 @@ class PracticeTestBase(TestCase):
     def make_question(self, marks=2, topic="Induction",
                       qtype=Question.QuestionType.SHORT_STRUCTURED,
                       options=None, correct="The induced EMF opposes the change.",
-                      school=None, approved=True):
+                      school=None, approved=True, language="en"):
         question = Question.objects.create(
             school=school or self.school_a,
             subject=self.physics_a if (school or self.school_a) == self.school_a else None,
@@ -57,6 +57,7 @@ class PracticeTestBase(TestCase):
             options=options,
             question_type=qtype,
             marks=marks,
+            language=language,
             author=self.teacher_a if (school or self.school_a) == self.school_a else self.teacher_b,
         )
         if approved:
@@ -347,3 +348,29 @@ class PracticeViewTests(PracticeTestBase):
 
         progress = client.get(reverse("practice-progress"))
         self.assertContains(progress, "Submitted quizzes")
+
+
+class PracticeLanguageFilterTests(PracticeTestBase):
+    """WP7: practice can be restricted to a content language."""
+
+    def test_start_quiz_filters_questions_by_language(self):
+        en = self.make_mcq(topic="Induction")
+        fr = self.make_question(topic="Induction", language="fr")
+        attempt = start_quiz(self.student_a, size=5, language="fr")
+        pks = [r.question.pk for r in attempt.responses.all()]
+        self.assertNotIn(en.pk, pks)
+        self.assertIn(fr.pk, pks)
+        for response in attempt.responses.all():
+            self.assertEqual(response.question.language, "fr")
+
+    def test_start_quiz_without_language_uses_the_whole_pool(self):
+        self.make_mcq(topic="Induction")
+        self.make_question(topic="Induction", language="fr")
+        attempt = start_quiz(self.student_a, size=10)
+        self.assertEqual(attempt.responses.count(), 2)
+
+    def test_practice_home_shows_language_selector(self):
+        client = Client()
+        client.force_login(self.student_a)
+        response = client.get(reverse("practice-home"))
+        self.assertContains(response, 'name="language"')

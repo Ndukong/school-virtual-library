@@ -1,16 +1,17 @@
 {% extends "base.html" %}
-{% block title %}AI Tutor - School Virtual Library{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "AI Tutor" %} - {% trans "School Virtual Library" %}{% endblock %}
 {% block content %}
-  <h1>AI Tutor</h1>
+  <h1>{% trans "AI Tutor" %}</h1>
   {% if error_message %}
     <p class="error" role="alert">{{ error_message }}</p>
   {% endif %}
   {% if scope == "BOOK" and scope_target %}
-    <p class="subtitle">Asking about the book: <strong>{{ scope_target.title }}</strong></p>
+    <p class="subtitle">{% trans "Asking about the book:" %} <strong>{{ scope_target.title }}</strong></p>
   {% elif scope == "CHAPTER" and scope_target %}
-    <p class="subtitle">Asking about the chapter: <strong>{{ scope_target.title }}</strong> ({{ scope_target.resource.title }})</p>
+    <p class="subtitle">{% trans "Asking about the chapter:" %} <strong>{{ scope_target.title }}</strong> ({{ scope_target.resource.title }})</p>
   {% else %}
-    <p class="subtitle">Answers about school material are grounded in your library and cite their sources.</p>
+    <p class="subtitle">{% trans "Answers about school material are grounded in your library and cite their sources." %}</p>
   {% endif %}
 
   <form method="post" class="card auth-form">
@@ -18,20 +19,24 @@
     <input type="hidden" name="scope" value="{{ scope }}">
     <input type="hidden" name="book" value="{{ book_param }}">
     <input type="hidden" name="chapter" value="{{ chapter_param }}">
-    <label for="id_question">Your question</label>
+    <label for="id_question">{% trans "Your question" %}</label>
     <textarea name="question" id="id_question" rows="4" required
-              placeholder="e.g. Explain electromagnetic induction with an example.">{{ request.POST.question|default:'' }}</textarea>
-    <button type="submit">Ask</button>
+              placeholder="{% trans 'e.g. Explain electromagnetic induction with an example.' %}">{{ request.POST.question|default:'' }}</textarea>
+    <button type="submit">{% trans "Ask" %}</button>
   </form>
 
   {% if scope == "GENERAL" %}
-    <p class="subtitle">General mode: answers are not grounded in school materials.</p>
+    <p class="subtitle">{% trans "General mode: answers are not grounded in school materials." %}</p>
   {% else %}
+    {% url 'ai-ask' as ask_url %}
+    {% url 'library-list' as library_url %}
+    {% url 'ai-study' as study_url %}
     <div class="card notice">
-      <p>Scope options: ask from the <a href="{% url 'ai-ask' %}">whole library</a>,
-      or open a book or chapter in the <a href="{% url 'library-list' %}">library</a>
-      and use its AI Tutor link to focus on that material. Need notes instead of
-      answers? Use the <a href="{% url 'ai-study' %}{% if book_param %}?book={{ book_param }}{% endif %}">study tools</a>.</p>
+      <p>
+        {% blocktrans with ask_url=ask_url library_url=library_url %}Scope options: ask from the <a href="{{ ask_url }}">whole library</a>, or open a book or chapter in the <a href="{{ library_url }}">library</a> and use its AI Tutor link to focus on that material.{% endblocktrans %}
+        {% trans "Need notes instead of answers? Use the" %}
+        <a href="{{ study_url }}{% if book_param %}?book={{ book_param }}{% endif %}">{% trans "study tools" %}</a>.
+      </p>
     </div>
   {% endif %}
 {% endblock %}

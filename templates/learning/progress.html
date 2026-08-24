@@ -1,31 +1,32 @@
 {% extends "base.html" %}
-{% block title %}My progress - Practice{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "My progress" %} - {% trans "Practice" %}{% endblock %}
 {% block content %}
-  <h1>My progress</h1>
+  <h1>{% trans "My progress" %}</h1>
 
   <div class="card">
-    <p><strong>Submitted quizzes:</strong> {{ submitted_count }}</p>
+    <p><strong>{% trans "Submitted quizzes:" %}</strong> {{ submitted_count }}</p>
     {% if per_subject %}
       <ul class="plain-list">
         {% for subject, entry in per_subject.items %}
-          <li>{{ subject }}: {{ entry.attempts }} attempt(s), average {{ entry.average }}%</li>
+          <li>{% blocktrans with s=subject a=entry.attempts avg=entry.average %}{{ s }}: {{ a }} attempt(s), average {{ avg }}%{% endblocktrans %}</li>
         {% endfor %}
       </ul>
     {% else %}
-      <p>Submit a quiz to start tracking progress.</p>
+      <p>{% trans "Submit a quiz to start tracking progress." %}</p>
     {% endif %}
   </div>
 
   {% if recommendations %}
     <section class="card">
-      <h2>Topics to revise</h2>
+      <h2>{% trans "Topics to revise" %}</h2>
       <ul class="plain-list">
         {% for rec in recommendations %}
           <li>
-            <strong>{{ rec.topic }}</strong> &middot; accuracy {{ rec.accuracy }}%
-            over {{ rec.total }} question(s)
-            &middot; <a href="{% url 'search' %}?q={{ rec.topic|urlencode }}">find material</a>
-            &middot; <a href="{% url 'ai-study' %}?kind=REVISION_NOTES">make revision notes</a>
+            <strong>{{ rec.topic }}</strong> &middot; {% blocktrans with a=rec.accuracy %}accuracy {{ a }}%{% endblocktrans %}
+            {% blocktrans with t=rec.total %}over {{ t }} question(s){% endblocktrans %}
+            &middot; <a href="{% url 'search' %}?q={{ rec.topic|urlencode }}">{% trans "find material" %}</a>
+            &middot; <a href="{% url 'ai-study' %}?kind=REVISION_NOTES">{% trans "make revision notes" %}</a>
           </li>
         {% endfor %}
       </ul>
@@ -34,7 +35,7 @@
 
   {% if recent %}
     <section class="card">
-      <h2>Recent attempts</h2>
+      <h2>{% trans "Recent attempts" %}</h2>
       <ul class="plain-list">
         {% for item in recent %}
           <li>
@@ -49,5 +50,5 @@
     </section>
   {% endif %}
 
-  <p><a href="{% url 'practice-home' %}">Back to practice</a></p>
+  <p><a href="{% url 'practice-home' %}">{% trans "Back to practice" %}</a></p>
 {% endblock %}

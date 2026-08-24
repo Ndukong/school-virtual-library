@@ -451,3 +451,54 @@ class PasswordResetTests(TestCase):
         self.assertEqual(response.url, reverse("password-reset-list"))
         self.student.refresh_from_db()
         self.assertFalse(self.student.must_change_password)
+
+
+class BilingualUserTests(TestCase):
+    """WP7: per-user language, switcher persistence, and French UI."""
+
+    def setUp(self):
+        self.school = make_school("Alpha Academy")
+        self.student = make_user("stufr", User.Role.STUDENT, self.school)
+
+    def test_language_default_is_english(self):
+        self.assertEqual(self.student.language, "en")
+        self.assertEqual(self.student.get_language_display(), "English")
+
+    def test_switcher_persists_user_language_and_sets_cookie(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("set-language") + "?lang=fr&next=/profile/")
+        self.assertRedirects(response, "/profile/")
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.language, "fr")
+        self.assertEqual(response.cookies["django_language"].value, "fr")
+
+    def test_switcher_rejects_foreign_next(self):
+        self.client.force_login(self.student)
+        response = self.client.get(
+            reverse("set-language") + "?lang=en&next=https://evil.example/phish"
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("home"))
+
+    def test_french_ui_rendered_for_french_user(self):
+        self.student.language = "fr"
+        self.student.save(update_fields=["language"])
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("profile"))
+        self.assertContains(response, "Liens rapides")
+        self.assertContains(response, "Déconnexion")
+        self.assertContains(response, "Bibliothèque")
+        self.assertEqual(response["Content-Language"], "fr")
+
+    def test_english_ui_rendered_for_english_user(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("profile"))
+        self.assertContains(response, "Quick links")
+        self.assertContains(response, "Log out")
+
+    def test_anonymous_switch_makes_login_screen_french(self):
+        self.client.get(reverse("set-language") + "?lang=fr&next=/login/")
+        response = self.client.get(reverse("login"))
+        self.assertContains(response, "Connexion")
+        self.assertContains(response, "Nom d'utilisateur")
+        self.assertContains(response, "Mot de passe")

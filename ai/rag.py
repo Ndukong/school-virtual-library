@@ -17,12 +17,15 @@ Hard rules enforced here:
 import re
 
 from django.conf import settings
+from django.utils.translation import gettext as _
 
 from ai.models import AIInteraction
 from ai.prompts import (
     DATA_CLOSE,
     DATA_OPEN,
-    INSUFFICIENT_MESSAGE,
+    insufficient_message,
+    language_instruction,
+    service_unavailable_message,
 )
 from ai.prompts import (
     LIBRARIAN_SYSTEM_PROMPT as SYSTEM_PROMPT,
@@ -99,7 +102,7 @@ def resolve_scope(user, scope, resource_public_id=None, chapter_id=None):
     if scope == AIInteraction.Scope.BOOK:
         resource = visible_resources(user).filter(public_id=resource_public_id).first()
         if resource is None:
-            raise ValueError("Book not found in your library.")
+            raise ValueError(_("Book not found in your library."))
         search_scope = {"resource": str(resource.public_id)}
     elif scope == AIInteraction.Scope.CHAPTER:
         from library.models import BookChapter
@@ -108,7 +111,7 @@ def resolve_scope(user, scope, resource_public_id=None, chapter_id=None):
         if chapter is None or not visible_resources(user).filter(
             pk=chapter.resource_id
         ).exists():
-            raise ValueError("Chapter not found in your library.")
+            raise ValueError(_("Chapter not found in your library."))
         search_scope = {"resource": str(chapter.resource.public_id)}
     elif scope == AIInteraction.Scope.SUBJECT:
         search_scope = {"subject": resource_public_id}
@@ -128,8 +131,8 @@ def validate_question(question):
     """Validate a question for the AI Librarian. Raises ValueError."""
     if len(question) > MAX_QUESTION_LENGTH:
         raise QuestionTooLong(
-            f"Questions are limited to {MAX_QUESTION_LENGTH} characters "
-            f"(you sent {len(question)})."
+            _("Questions are limited to %(maximum)d characters (you sent %(sent)d).")
+            % {"maximum": MAX_QUESTION_LENGTH, "sent": len(question)}
         )
 
 
@@ -140,6 +143,7 @@ def ask(user, question, scope=AIInteraction.Scope.LIBRARY,
     validate_question(question)
     check_rate_limit(user)
 
+    language = getattr(user, "language", "") or getattr(settings, "LANGUAGE_CODE", "en")
     scope_label, search_scope = resolve_scope(
         user, scope, resource_public_id, chapter_id
     )
@@ -150,7 +154,7 @@ def ask(user, question, scope=AIInteraction.Scope.LIBRARY,
     if grounded and getattr(settings, "RAG_USE_CACHE", True):
         cache_key = _answer_cache_key(
             user, scope_label, normalized, chat_provider,
-            getattr(settings, "RAG_PROMPT_VERSION", "rag-v1"),
+            getattr(settings, "RAG_PROMPT_VERSION", "rag-v2"),
         )
         if cache_key is not None:
             from django.core.cache import cache
@@ -162,7 +166,7 @@ def ask(user, question, scope=AIInteraction.Scope.LIBRARY,
                     school=user.school,
                     scope=scope_label,
                     question=question.strip(),
-                    prompt_version=getattr(settings, "RAG_PROMPT_VERSION", "rag-v1"),
+                    prompt_version=getattr(settings, "RAG_PROMPT_VERSION", "rag-v2"),
                     retrieved_count=len(hit.get("chunk_ids", [])),
                     answer=hit["answer"],
                     cited_chunk_ids=hit.get("chunk_ids", []),
@@ -180,12 +184,12 @@ def ask(user, question, scope=AIInteraction.Scope.LIBRARY,
         school=user.school,
         scope=scope_label,
         question=question.strip(),
-        prompt_version=getattr(settings, "RAG_PROMPT_VERSION", "rag-v1"),
+        prompt_version=getattr(settings, "RAG_PROMPT_VERSION", "rag-v2"),
         retrieved_count=len(results),
     )
 
     if grounded and not results:
-        interaction.answer = INSUFFICIENT_MESSAGE
+        interaction.answer = insufficient_message(language)
         interaction.used_provider = False
         interaction.cited_chunk_ids = []
         interaction.save()
@@ -210,12 +214,13 @@ def ask(user, question, scope=AIInteraction.Scope.LIBRARY,
         from ai.context import school_context
 
         enforce_budget(user.school)
+        instruction = language_instruction(language)
         with school_context(user.school):
-            result = provider.generate(full_prompt, system=SYSTEM_PROMPT)
+            result = provider.generate(
+                full_prompt, system=f"{SYSTEM_PROMPT}\n\n{instruction}"
+            )
     except AIError as exc:
-        interaction.answer = (
-            "The AI service is temporarily unavailable. Please try again shortly."
-        )
+        interaction.answer = service_unavailable_message(language)
         interaction.used_provider = False
         interaction.save()
         raise AIError(str(exc)) from exc
@@ -281,7 +286,12 @@ def _answer_cache_key(user, scope_label, normalized, chat_provider, prompt_versi
         cache.set(version_key, version, 60)
     fingerprint = hashlib.sha256(normalized.encode()).hexdigest()
     scope = (user.school_id or 0)
-    return f"rag:{scope}:{scope_label}:{version}:{model}:{prompt_version}:{fingerprint}"
+    language = (getattr(user, "language", None) or getattr(settings, "LANGUAGE_CODE", "en"))
+    language = language.split("-")[0]
+    return (
+        f"rag:{scope}:{scope_label}:{version}:{model}:{prompt_version}:"
+        f"{language}:{fingerprint}"
+    )
 
 
 def sources_for(interaction):

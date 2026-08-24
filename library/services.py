@@ -21,6 +21,28 @@ PDF_MAGIC = b"%PDF-"
 MAX_SNIFF_BYTES = 8 * 1024
 ALLOWED_EXTENSIONS = {".pdf"}
 
+# WP7: Resource.language is free text for legacy rows; these synonyms map any
+# stored spelling onto the two content languages. New uploads are normalized
+# through language_code() at save time.
+LANGUAGE_SYNONYMS = {
+    "en": {"en", "english", "anglais"},
+    "fr": {"fr", "french", "francais", "français"},
+}
+
+
+def language_code(raw):
+    """Map a free-text language value onto en/fr, or None when unrecognized."""
+    value = (raw or "").strip().lower()
+    for code, synonyms in LANGUAGE_SYNONYMS.items():
+        if value in synonyms:
+            return code
+    return None
+
+
+def language_search_values(code):
+    """Stored spellings that mean the given code (reads normalize legacy rows)."""
+    return list(LANGUAGE_SYNONYMS.get(code, {code}))
+
 
 def validate_upload(uploaded_file):
     """Validate an uploaded document. Raises ValidationError on any failure."""

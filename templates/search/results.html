@@ -1,37 +1,44 @@
 {% extends "base.html" %}
-{% block title %}Search - School Virtual Library{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Search" %} - {% trans "School Virtual Library" %}{% endblock %}
 {% block content %}
-  <h1>Search the library</h1>
+  <h1>{% trans "Search the library" %}</h1>
   <form method="get" class="filters card">
-    <label for="id_q">Search</label>
-    <input type="search" id="id_q" name="q" value="{{ query }}" placeholder="Ask about any topic...">
-    <label for="id_subject">Subject</label>
+    <label for="id_q">{% trans "Search" %}</label>
+    <input type="search" id="id_q" name="q" value="{{ query }}" placeholder="{% trans 'Ask about any topic...' %}">
+    <label for="id_subject">{% trans "Subject" %}</label>
     <select id="id_subject" name="subject">
-      <option value="">All subjects</option>
+      <option value="">{% trans "All subjects" %}</option>
       {% for subject in subjects %}
         <option value="{{ subject.pk }}" {% if current_filters.subject == subject.pk|stringformat:"s" %}selected{% endif %}>{{ subject }}</option>
       {% endfor %}
     </select>
-    <label for="id_class">Class</label>
+    <label for="id_class">{% trans "Class" %}</label>
     <select id="id_class" name="class">
-      <option value="">All classes</option>
+      <option value="">{% trans "All classes" %}</option>
       {% for school_class in classes %}
         <option value="{{ school_class.pk }}" {% if current_filters.school_class == school_class.pk|stringformat:"s" %}selected{% endif %}>{{ school_class.name }}</option>
       {% endfor %}
     </select>
-    <label for="id_type">Type</label>
+    <label for="id_type">{% trans "Type" %}</label>
     <select id="id_type" name="type">
-      <option value="">All types</option>
+      <option value="">{% trans "All types" %}</option>
       {% for value, label in resource_types %}
         <option value="{{ value }}" {% if current_filters.resource_type == value %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
-    <button type="submit">Search</button>
+    <label for="id_language">{% trans "Language" %}</label>
+    <select id="id_language" name="language">
+      <option value="">{% trans "All languages" %}</option>
+      <option value="en" {% if current_filters.language == "en" %}selected{% endif %}>{% trans "English" %}</option>
+      <option value="fr" {% if current_filters.language == "fr" %}selected{% endif %}>{% trans "French" %}</option>
+    </select>
+    <button type="submit">{% trans "Search" %}</button>
   </form>
 
   {% if query %}
     {% if results %}
-      <p class="subtitle">{{ results|length }} result(s) for &ldquo;{{ query }}&rdquo;</p>
+      <p class="subtitle">{% blocktrans count n=results|length %}{{ n }} result for &ldquo;{{ query }}&rdquo;{% plural %}{{ n }} results for &ldquo;{{ query }}&rdquo;{% endblocktrans %}</p>
       <ul class="resource-list">
         {% for result in results %}
           <li class="card resource-card">
@@ -42,7 +49,7 @@
               </span>
             </div>
             <p class="meta">{{ result.resource.author }}{% if result.resource.subject %} &middot; {{ result.resource.subject }}{% endif %}
-              {% if result.semantic_score %} &middot; semantic{% endif %}
+              {% if result.semantic_score %} &middot; {% trans "semantic" %}{% endif %}
             </p>
             <p class="snippet">{{ result.snippet|safe }}</p>
           </li>
@@ -50,7 +57,7 @@
       </ul>
     {% else %}
       <div class="card notice">
-        <p>No results for &ldquo;{{ query }}&rdquo;. Try different words, or check that the material has finished processing.</p>
+        <p>{% blocktrans %}No results for &ldquo;{{ query }}&rdquo;. Try different words, or check that the material has finished processing.{% endblocktrans %}</p>
       </div>
     {% endif %}
   {% endif %}

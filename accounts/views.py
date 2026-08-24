@@ -1,10 +1,12 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView as DjangoLoginView
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
 from django.urls import reverse
-from django.utils import timezone
+from django.utils import timezone, translation
+from django.utils.translation import gettext as _
 from django.views.generic import TemplateView, View
 
 from accounts.permissions import (
@@ -56,7 +58,11 @@ class LoginView(DjangoLoginView):
         if blocked:
             self._blocked = True
             form = self.get_form()
-            form.add_error(None, f"Too many failed attempts. Try again in {wait} second(s).")
+            form.add_error(
+                None,
+                _("Too many failed attempts. Try again in %(seconds)d second(s).")
+                % {"seconds": wait},
+            )
             return self.form_invalid(form)
         return super().post(request, *args, **kwargs)
 
@@ -77,6 +83,41 @@ class LoginView(DjangoLoginView):
                 client_ip(self.request),
             )
         return super().form_invalid(form)
+
+
+class SetLanguageView(View):
+    """Language switcher (WP7).
+
+    Open to anonymous users so the login screen itself is bilingual; the
+    choice is persisted to the account when the visitor is signed in and is
+    also written to Django's language cookie (Django 5.2 resolves the request
+    language from that cookie). next is validated to stay same-origin.
+    """
+
+    def get(self, request):
+        code = (request.GET.get("lang") or "").strip().lower()
+        valid = {code for code, _label in settings.LANGUAGES}
+        if code in valid and request.user.is_authenticated:
+            if code != request.user.language:
+                request.user.language = code
+                request.user.save(update_fields=["language"])
+            translation.activate(code)
+        next_url = (request.GET.get("next") or "").strip()
+        if not next_url.startswith("/") or next_url.startswith("//"):
+            next_url = reverse("home")
+        response = HttpResponseRedirect(next_url)
+        if code in valid:
+            response.set_cookie(
+                settings.LANGUAGE_COOKIE_NAME,
+                code,
+                max_age=settings.LANGUAGE_COOKIE_AGE,
+                path=settings.LANGUAGE_COOKIE_PATH,
+                domain=settings.LANGUAGE_COOKIE_DOMAIN,
+                secure=settings.LANGUAGE_COOKIE_SECURE,
+                httponly=settings.LANGUAGE_COOKIE_HTTPONLY,
+                samesite=settings.LANGUAGE_COOKIE_SAMESITE,
+            )
+        return response
 
 
 class AdminDashboardView(AdminRequiredMixin, TemplateView):
@@ -148,7 +189,7 @@ class LogoutAllDevicesView(LoginRequiredMixin, View):
             if str(payload.get("_auth_user_id", "")) == user_identifier:
                 session.delete()
                 deleted += 1
-        messages.success(request, f"Signed out {deleted} other session(s).")
+        messages.success(request, _("Signed out %(count)d other session(s).") % {"count": deleted})
         return redirect("profile")
 
 
@@ -232,3 +273,4 @@ class ForcePasswordChangeView(LoginRequiredMixin, TemplateView):
         update_session_auth_hash(request, request.user)
         messages.success(request, "Password updated.")
         return redirect("profile")
+

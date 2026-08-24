@@ -1,20 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Library - School Virtual Library{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Library" %} - {% trans "School Virtual Library" %}{% endblock %}
 {% block content %}
-  <h1>Library</h1>
+  <h1>{% trans "Library" %}</h1>
   <form method="get" class="filters card">
-    <label for="id_q">Search</label>
-    <input type="search" id="id_q" name="q" value="{{ current_filters.q }}" placeholder="Title, author, description">
-    <label for="id_type">Type</label>
+    <label for="id_q">{% trans "Search" %}</label>
+    <input type="search" id="id_q" name="q" value="{{ current_filters.q }}" placeholder="{% trans 'Title, author, description' %}">
+    <label for="id_type">{% trans "Type" %}</label>
     <select id="id_type" name="type">
-      <option value="">All types</option>
+      <option value="">{% trans "All types" %}</option>
       {% for value, label in resource_types %}
         <option value="{{ value }}" {% if current_filters.type == value %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
-    <button type="submit">Filter</button>
+    <label for="id_language">{% trans "Language" %}</label>
+    <select id="id_language" name="language">
+      {% for value, label in languages %}
+        <option value="{{ value }}" {% if current_filters.language == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">{% trans "Filter" %}</button>
     {% if can_upload %}
-      <a class="btn-link" href="{% url 'library-upload' %}">Upload a resource</a>
+      <a class="btn-link" href="{% url 'library-upload' %}">{% trans "Upload a resource" %}</a>
     {% endif %}
   </form>
 
@@ -37,15 +44,15 @@
     {% if is_paginated %}
       <nav class="pager" aria-label="Pagination">
         {% if page_obj.has_previous %}
-          <a href="?page={{ page_obj.previous_page_number }}&q={{ current_filters.q }}&type={{ current_filters.type }}">Previous</a>
+          <a href="?page={{ page_obj.previous_page_number }}&q={{ current_filters.q }}&type={{ current_filters.type }}&language={{ current_filters.language }}">{% trans "Previous" %}</a>
         {% endif %}
-        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        <span>{% blocktrans with page=page_obj.number total=page_obj.paginator.num_pages %}Page {{ page }} of {{ total }}{% endblocktrans %}</span>
         {% if page_obj.has_next %}
-          <a href="?page={{ page_obj.next_page_number }}&q={{ current_filters.q }}&type={{ current_filters.type }}">Next</a>
+          <a href="?page={{ page_obj.next_page_number }}&q={{ current_filters.q }}&type={{ current_filters.type }}&language={{ current_filters.language }}">{% trans "Next" %}</a>
         {% endif %}
       </nav>
     {% endif %}
   {% else %}
-    <div class="card notice"><p>No resources found.</p></div>
+    <div class="card notice"><p>{% trans "No resources found." %}</p></div>
   {% endif %}
 {% endblock %}

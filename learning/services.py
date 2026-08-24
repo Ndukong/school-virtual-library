@@ -10,6 +10,7 @@ import re
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from django.utils.translation import gettext as _
 
 from examinations.models import Exam
 from learning.models import AttemptResponse, PracticeAttempt
@@ -44,14 +45,15 @@ def get_owned_attempt(user, public_id):
             "student", "subject", "exam"
         ).get(public_id=public_id)
     except PracticeAttempt.DoesNotExist:
-        raise PermissionDenied("Attempt not found.") from None
+        raise PermissionDenied(_("Attempt not found.")) from None
     if attempt.student_id != user.pk:
-        raise PermissionDenied("Attempt not found.")
+        raise PermissionDenied(_("Attempt not found."))
     return attempt
 
 
 @transaction.atomic
-def start_quiz(student, subject=None, topic="", size=None, objective_only=False):
+def start_quiz(student, subject=None, topic="", size=None, objective_only=False,
+               language=None):
     """Draw a random approved quiz for the student's school (+ their class)."""
     size = int(size or getattr(settings, "PRACTICE_DEFAULT_SIZE", 5))
     max_size = getattr(settings, "PRACTICE_MAX_SIZE", 20)
@@ -62,6 +64,8 @@ def start_quiz(student, subject=None, topic="", size=None, objective_only=False)
         approval_status=Question.ApprovalStatus.APPROVED,
         is_active=True,
     )
+    if language:
+        queryset = queryset.filter(language=language)
     if objective_only:
         queryset = queryset.filter(question_type__in=OBJECTIVE_TYPES)
     if subject:
@@ -77,8 +81,8 @@ def start_quiz(student, subject=None, topic="", size=None, objective_only=False)
     pool = list(queryset.select_related("subject"))
     if not pool:
         raise PracticeError(
-            "No approved questions are available for that filter yet. "
-            "Try a different subject/topic."
+            _("No approved questions are available for that filter yet. "
+              "Try a different subject/topic.")
         )
     random.shuffle(pool)
     selected = pool[:size]
@@ -108,15 +112,15 @@ def models_school_class_or_null(school_class):
 def start_from_exam(student, exam):
     """Practice a PUBLISHED exam from the student's school/class."""
     if exam.school_id != student.school_id:
-        raise PracticeError("That exam is not available for your school.")
+        raise PracticeError(_("That exam is not available for your school."))
     if exam.status != Exam.Status.PUBLISHED:
-        raise PracticeError("Only published exams can be practiced.")
+        raise PracticeError(_("Only published exams can be practiced."))
     if exam.school_class_id and student_class_id(student) != exam.school_class_id:
-        raise PracticeError("That exam is set for a different class.")
+        raise PracticeError(_("That exam is set for a different class."))
 
     slots = list(exam.exam_questions.select_related("question").order_by("position"))
     if not slots:
-        raise PracticeError("That exam has no questions.")
+        raise PracticeError(_("That exam has no questions."))
 
     attempt = PracticeAttempt.objects.create(
         student=student,
@@ -146,7 +150,7 @@ def _grade_objective(response, given_answer):
 def submit_attempt(attempt, answers):
     """Grade and close an attempt. answers: {response_pk: given_text}."""
     if attempt.status == PracticeAttempt.Status.SUBMITTED:
-        raise PracticeError("This attempt was already submitted.")
+        raise PracticeError(_("This attempt was already submitted."))
     earned = 0
     for response in attempt.responses.select_related("question"):
         given = (answers.get(str(response.pk)) or "").strip()
@@ -172,13 +176,13 @@ def record_self_mark(user, response, is_correct):
     """Student applies the teacher's marking scheme to an ungraded response."""
     attempt = response.attempt
     if attempt.student_id != user.pk:
-        raise PermissionDenied("Not your attempt.")
+        raise PermissionDenied(_("Not your attempt."))
     if attempt.status != PracticeAttempt.Status.SUBMITTED:
-        raise PracticeError("Submit the attempt before self-marking.")
+        raise PracticeError(_("Submit the attempt before self-marking."))
     if response.question.question_type in OBJECTIVE_TYPES:
-        raise PracticeError("Objective questions are graded automatically.")
+        raise PracticeError(_("Objective questions are graded automatically."))
     if response.is_correct is not None:
-        raise PracticeError("Already marked.")
+        raise PracticeError(_("Already marked."))
 
     previous = response.awarded_marks
     response.is_correct = bool(is_correct)

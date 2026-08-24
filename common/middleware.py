@@ -6,6 +6,9 @@ SESSION_IDLE_SECONDS (shared lab machines, AGENTS section 6).
 MustChangePasswordMiddleware forces users with a temporary password to change
 it before using the rest of the platform (their only allowed pages are the
 change page and logout).
+
+UserLanguageMiddleware activates the signed-in user's saved language (WP7);
+it runs after LocaleMiddleware so the saved preference beats the session.
 """
 
 import time
@@ -13,11 +16,12 @@ import time
 from django.conf import settings
 from django.http import HttpResponseRedirect
 from django.shortcuts import resolve_url
+from django.utils import translation
 
 SESSION_KEY_LAST_SEEN = "_last_seen"
 
 _ALLOWED_PREFIXES = ("/static/", "/admin/")
-_ALLOWED_PATHS = ("/password/change/", "/logout/", "/logout-all/", "/login/")
+_ALLOWED_PATHS = ("/password/change/", "/logout/", "/logout-all/", "/login/", "/language/")
 
 
 class MustChangePasswordMiddleware:
@@ -61,3 +65,43 @@ class IdleSessionMiddleware:
 
         session[SESSION_KEY_LAST_SEEN] = now
         return self.get_response(request)
+
+
+def _valid_language_codes():
+    lang_codes = {code for code, _label in getattr(settings, "LANGUAGES", [])}
+    primary = (getattr(settings, "LANGUAGE_CODE", "en") or "en").split("-")[0]
+    return lang_codes | {primary}
+
+
+class UserLanguageMiddleware:
+    """Activate the authenticated user's saved language for this request.
+
+    Order matters: Django's LocaleMiddleware runs earlier and picks the
+    language cookie / Accept-Language header; this middleware overrides it
+    with the user's own preference so a signed-in student keeps their
+    language across devices. Anonymous requests keep the cookie behaviour.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        valid = _valid_language_codes()
+        language = ""
+        if getattr(request, "user", None) and getattr(request.user, "is_authenticated", False):
+            preference = getattr(request.user, "language", "")
+            if preference and preference.split("-")[0] in valid:
+                language = preference.split("-")[0]
+        if not language:
+            cookie_language = request.COOKIES.get(settings.LANGUAGE_COOKIE_NAME, "")
+            if cookie_language and cookie_language.split("-")[0] in valid:
+                language = cookie_language.split("-")[0]
+        if not language:
+            language = (settings.LANGUAGE_CODE or "en").split("-")[0]
+
+        translation.activate(language)
+        request.LANGUAGE_CODE = language
+        response = self.get_response(request)
+        if hasattr(response, "setdefault"):
+            response.setdefault("Content-Language", language)
+        return response

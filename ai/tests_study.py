@@ -86,7 +86,7 @@ class StudyGenerationTests(StudyTestBase):
                     )
                 self.assertTrue(generation.used_provider)
                 self.assertEqual(generation.model, "mock-chat-small")
-                self.assertEqual(generation.prompt_version, "study-v1")
+                self.assertEqual(generation.prompt_version, "study-v2")
                 self.assertIn("[1]", generation.content)
                 self.assertEqual(generation.cited_chunk_ids,
                                  [resource.chunks.first().pk])
