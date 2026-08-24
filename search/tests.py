@@ -357,3 +357,16 @@ class EmbeddingQueryCacheTests(TestCase):
         self.assertEqual(calls["n"], 1)
         self.assertEqual(first[1], second[1])
         self.assertEqual(first[1], [0.1, 0.2, 0.3, 0.4])
+class BenchmarkCommandTests(TestCase):
+    def test_benchmark_reports_p50_p95(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        out = StringIO()
+        call_command("benchmark_search", chunks=20, iterations=3, stdout=out)
+        output = out.getvalue()
+        self.assertIn("p50=", output)
+        self.assertIn("p95=", output)
+        self.assertIn("keyword", output)
+        self.assertIn("hybrid", output)
