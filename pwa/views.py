@@ -4,6 +4,7 @@ import json
 
 from django.http import FileResponse, HttpResponse
 from django.template.loader import render_to_string
+from django.utils import translation
 from django.views.decorators.http import require_GET
 
 PWA_ROOT = "pwa/"
@@ -26,7 +27,7 @@ def manifest_view(request):
         "display": "standalone",
         "background_color": "#f4f6f8",
         "theme_color": "#0b5fa5",
-        "lang": "en",
+        "lang": translation.get_language() or "en",
         "icons": [
             {
                 "src": request.build_absolute_uri("/static/pwa/icons/icon.svg"),

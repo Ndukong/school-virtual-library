@@ -552,3 +552,35 @@ class ResourceLanguageFilterTests(LibraryTestBase):
         self.assertEqual(language_code("FRENCH"), "fr")
         self.assertEqual(language_code("anglais"), "en")
         self.assertIsNone(language_code("swahili"))
+
+
+class OfflineReadingPanelTests(LibraryTestBase):
+    """WP8: the resource page exposes the opt-in offline-reader panel."""
+
+    def test_panel_present_for_file_resources(self):
+        resource = self.make_resource(title="Offline Capable")
+        self.client.force_login(self.student_a)
+        response = self.client.get(resource.get_absolute_url())
+        self.assertContains(response, "data-offline-reader")
+        self.assertContains(response, "data-offline-save")
+        self.assertContains(response, "data-offline-remove")
+        self.assertContains(response, "offline-reader.js")
+        self.assertContains(response, 'data-size="')
+        self.assertContains(response, "/read/")
+        self.assertContains(response, "/stream/")
+
+    def test_panel_absent_for_resources_without_a_file(self):
+        resource = self.make_resource(
+            title="No File", with_file=False,
+            resource_type=Resource.ResourceType.NOTES,
+        )
+        self.client.force_login(self.student_a)
+        response = self.client.get(resource.get_absolute_url())
+        self.assertNotContains(response, "data-offline-reader")
+
+    def test_out_of_school_user_never_sees_panel(self):
+        resource = self.make_resource(title="Other School Doc", school=self.school_b)
+        self.client.force_login(self.student_a)
+        self.assertEqual(
+            self.client.get(resource.get_absolute_url()).status_code, 404
+        )

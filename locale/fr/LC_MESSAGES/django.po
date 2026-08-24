@@ -584,3 +584,58 @@ msgstr "5 questions"
 
 msgid "10 questions"
 msgstr "10 questions"
+
+# --- PWA offline (WP8) -----------------------------------------------------
+msgid "Offline"
+msgstr "Hors ligne"
+
+msgid "You're offline"
+msgstr "Vous êtes hors ligne"
+
+msgid "This page was loaded from your device's local cache. Reconnect to the internet to browse the library, search, or use AI tools."
+msgstr "Cette page a été chargée depuis le cache local de votre appareil. Reconnectez-vous à Internet pour parcourir la bibliothèque, rechercher ou utiliser les outils IA."
+
+msgid "Documents you saved for offline reading and offline quizzes are still available."
+msgstr "Les documents que vous avez enregistrés pour la lecture hors ligne et les quiz hors ligne sont toujours disponibles."
+
+msgid "Try again"
+msgstr "Réessayer"
+
+msgid "Offline reading"
+msgstr "Lecture hors ligne"
+
+msgid "Save this document to this device so you can read it without an internet connection. The copy stays on this device only."
+msgstr "Enregistrez ce document sur cet appareil pour pouvoir le lire sans connexion Internet. La copie reste uniquement sur cet appareil."
+
+msgid "Approximate size:"
+msgstr "Taille approximative :"
+
+msgid "Save for offline reading"
+msgstr "Enregistrer pour la lecture hors ligne"
+
+msgid "Remove offline copy"
+msgstr "Supprimer la copie hors ligne"
+
+msgid "Saved to this device"
+msgstr "Enregistré sur cet appareil"
+
+msgid "Offline practice"
+msgstr "Exercices hors ligne"
+
+msgid "Save this quiz to this device so you can answer it without an internet connection. Your answers will be submitted automatically when you reconnect."
+msgstr "Enregistrez ce quiz sur cet appareil pour y répondre sans connexion Internet. Vos réponses seront soumises automatiquement à la reconnexion."
+
+msgid "Take this quiz offline"
+msgstr "Prendre ce quiz hors ligne"
+
+msgid "Quiz saved to this device"
+msgstr "Quiz enregistré sur cet appareil"
+
+msgid "You are offline. Your answers were saved and will be submitted when you reconnect."
+msgstr "Vous êtes hors ligne. Vos réponses ont été enregistrées et seront soumises à la reconnexion."
+
+msgid "Your session ended while offline. Log in again and your saved answers will be submitted."
+msgstr "Votre session a expiré pendant que vous étiez hors ligne. Connectez-vous à nouveau et vos réponses enregistrées seront soumises."
+
+msgid "Could not submit yet, keeping your answers safely."
+msgstr "La soumission a échoué pour l'instant ; vos réponses sont conservées en sécurité."

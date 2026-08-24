@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n static %}
 {% block title %}{{ resource.title }} - {% trans "School Virtual Library" %}{% endblock %}
 {% block content %}
   <h1>{{ resource.title }}</h1>
@@ -47,5 +47,23 @@
       <a class="btn-secondary" href="{% url 'ai-ask' %}?book={{ resource.public_id }}">{% trans "Ask AI Tutor about this book" %}</a>
       <a class="btn-secondary" href="{% url 'ai-study' %}?book={{ resource.public_id }}&kind=REVISION_NOTES">{% trans "Study tools" %}</a>
     </div>
+
+    <div class="card"
+         data-offline-reader
+         data-read-url="{% url 'library-read' resource.public_id %}"
+         data-stream-url="{% url 'library-stream' resource.public_id %}"
+         data-size="{{ resource.file_size }}"
+         data-saved-label="{% trans 'Saved to this device' %}">
+      <h2>{% trans "Offline reading" %}</h2>
+      <p>{% trans "Save this document to this device so you can read it without an internet connection. The copy stays on this device only." %}</p>
+      <p class="meta">{% trans "Approximate size:" %} {{ resource.file_size|filesizeformat }}</p>
+      <div class="btn-row">
+        <button type="button" class="btn-secondary" data-offline-save>{% trans "Save for offline reading" %}</button>
+        <button type="button" class="btn-secondary" data-offline-remove hidden>{% trans "Remove offline copy" %}</button>
+      </div>
+      <p class="meta" data-offline-status></p>
+    </div>
   {% endif %}
+
+  <script src="{% static 'pwa/offline-reader.js' %}" defer></script>
 {% endblock %}

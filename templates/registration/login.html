@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n static %}
 {% block title %}{% trans "Log in" %} - {% trans "School Virtual Library" %}{% endblock %}
 {% block content %}
   <h1>{% trans "Log in" %}</h1>
@@ -18,4 +18,5 @@
     <input type="password" name="password" id="id_password" autocomplete="current-password" required>
     <button type="submit">{% trans "Log in" %}</button>
   </form>
+  <script src="{% static 'pwa/offline-clear.js' %}" defer></script>
 {% endblock %}

@@ -374,3 +374,34 @@ class PracticeLanguageFilterTests(PracticeTestBase):
         client.force_login(self.student_a)
         response = client.get(reverse("practice-home"))
         self.assertContains(response, 'name="language"')
+
+
+class OfflinePracticeWiringTests(PracticeTestBase):
+    """WP8: the attempt page ships the offline-practice bundle and markers."""
+
+    def test_attempt_page_has_offline_practice_wiring(self):
+        client = Client()
+        client.force_login(self.student_a)
+        self.make_mcq(topic="Induction")
+        attempt = start_quiz(self.student_a, size=1)
+        response = client.get(reverse("attempt-page", args=[attempt.public_id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-offline-practice")
+        self.assertContains(response, "data-offline-cache")
+        self.assertContains(response, "data-offline-form")
+        self.assertContains(response, "offline-practice.js")
+        self.assertContains(
+            response, reverse("attempt-submit", args=[attempt.public_id])
+        )
+
+    def test_offline_form_posts_to_the_same_submit_url(self):
+        # The queued replay must target exactly the endpoint the regular form
+        # uses, so the server still enforces ownership and validity.
+        client = Client()
+        client.force_login(self.student_a)
+        self.make_mcq(topic="Induction")
+        attempt = start_quiz(self.student_a, size=1)
+        response = client.get(reverse("attempt-page", args=[attempt.public_id]))
+        submit_url = reverse("attempt-submit", args=[attempt.public_id])
+        self.assertContains(response, f'action="{submit_url}"')
+        self.assertContains(response, f'data-submit-url="{submit_url}"')

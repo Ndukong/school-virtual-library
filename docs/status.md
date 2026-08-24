@@ -172,6 +172,37 @@ Gate: ruff 97 (no new findings from WP7 files); check clean; 394 tests OK
 (3 skipped); check --deploy exit 0; pip-audit clean; migrations reversible
 and generated from scratch, makemigrations --check clean.
 
+## Work Package 8 - Offline-first PWA (2026-08-24, branch wp/8-offline)
+
+- Privacy fix: the worker no longer auto-caches authenticated pages. It now
+  precaches ONLY the static shell (/offline/, site.css, manifest) and serves
+  everything else NETWORK FIRST, falling back to caches the USER explicitly
+  built from the page (svl-files-v1 / svl-attempts-v1). Logging out lands on
+  /login/ where offline-clear.js erases both device caches (shared labs).
+- Opt-in offline reading: the resource page shows an "Offline reading" panel
+  (data cost shown before saving, translated). Saving caches the read page
+  plus its PDF stream; offline navigation re-opens the exact document from
+  cache (watermark reader intact), never stale cache for other content.
+- Offline practice: the attempt page ships a "Take this quiz offline" button
+  (caches the quiz) and an offline fallback: submissions made while offline
+  are queued in localStorage and replayed in order on `online`/next visit
+  against the SAME submit endpoint, so server-side ownership/validity still
+  apply. Session-expiry is detected (redirect to login keeps the queue).
+- CSS: .btn-row now wraps (horizontal overflow at 360px fixed). Reader and
+  practice i18n strings added to the French catalog.
+- Tests: +16 unit tests (worker never opens non-shell caches; precache gated
+  to the shell; offline bundles shipped; manifest lang follows active
+  language; bilingual offline shell; cache-clear on login; resource detail
+  panel present/absent by file & 404 cross-school; attempt form offline
+  markers + submit-URL parity).
+- Browser proof (Playwright, 360px): logged in as a seeded student, saved a
+  PDF for offline, confirmed both URLs in svl-files-v1, then went offline and
+  reopened the reader - the watermark page and the embedded PDF served from
+  cache (no /offline/ shell); uncached navigation fell back to the shell.
+
+Gate: ruff 97 (no new from WP8 files); check clean; 404 tests OK (3 skipped);
+check --deploy exit 0; pip-audit clean.
+
 ## Work Package 2 - production settings hardening (2026-08-23, branch
 wp/2-prod-settings)
 

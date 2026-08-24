@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n static %}
 {% block title %}{% trans "Quiz" %} - {% trans "Practice" %}{% endblock %}
 {% block content %}
   <h1>{% trans "Practice quiz" %}</h1>
@@ -10,7 +10,19 @@
   {% endif %}
   <p class="meta">{% trans "Answer everything, then submit. Model answers appear after submission." %}</p>
 
-  <form method="post" action="{% url 'attempt-submit' attempt.public_id %}">
+  <div class="card" data-offline-practice
+       data-submit-url="{% url 'attempt-submit' attempt.public_id %}"
+       data-saved-label="{% trans 'Quiz saved to this device' %}"
+       data-queued-label="{% trans 'You are offline. Your answers were saved and will be submitted when you reconnect.' %}"
+       data-login-needed-label="{% trans 'Your session ended while offline. Log in again and your saved answers will be submitted.' %}"
+       data-retry-label="{% trans 'Could not submit yet, keeping your answers safely.' %}">
+    <h2>{% trans "Offline practice" %}</h2>
+    <p>{% trans "Save this quiz to this device so you can answer it without an internet connection. Your answers will be submitted automatically when you reconnect." %}</p>
+    <button type="button" class="btn-secondary" data-offline-cache>{% trans "Take this quiz offline" %}</button>
+    <p class="meta" data-offline-status></p>
+  </div>
+
+  <form method="post" action="{% url 'attempt-submit' attempt.public_id %}" data-offline-form>
     {% csrf_token %}
     {% for response in responses %}
       <div class="card">
@@ -30,4 +42,6 @@
     {% endfor %}
     <button type="submit">{% trans "Submit answers" %}</button>
   </form>
+
+  <script src="{% static 'pwa/offline-practice.js' %}" defer></script>
 {% endblock %}
