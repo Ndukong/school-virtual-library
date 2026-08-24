@@ -1,7 +1,7 @@
 from unittest import mock
 
 from django.core.files.base import ContentFile
-from django.test import Client, TestCase, override_settings
+from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
 from accounts.models import User
@@ -313,3 +313,25 @@ class KeywordRecallTests(SearchTestBase):
 
         results = keyword_search(self.student_a, "unique needle phrase")
         self.assertTrue(any(r.chunk.resource_id == target.pk for r in results))
+class PgvectorBackendTests(SimpleTestCase):
+    def test_sql_ranks_in_database_with_placeholders(self):
+        from search.backends import pg_semantic_ranking_sql
+
+        sql, param_count = pg_semantic_ranking_sql([11, 22, 33], limit=12)
+        self.assertIn("ORDER BY ce.embedding <-> %s", sql)
+        self.assertIn("LIMIT %s", sql)
+        self.assertIn("chunk_id IN (%s, %s, %s)", sql)
+        self.assertEqual(param_count, 3 + 2)
+
+    def test_pg_path_disabled_on_sqlite(self):
+        from search.backends import use_pgvector
+
+        self.assertFalse(use_pgvector())
+
+    def test_backfill_command_guidance_on_non_postgres(self):
+        from django.core.management import call_command
+        from io import StringIO
+
+        out = StringIO()
+        call_command("backfill_pg_vectors", stdout=out)
+        self.assertIn("PostgreSQL", out.getvalue())

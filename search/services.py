@@ -107,21 +107,53 @@ def cosine_similarity(a, b):
     return dot / (norm_a * norm_b)
 
 
+def _embed_query(query):
+    provider = get_provider()
+    return provider, provider.embed([query])[0]
+
+
 def semantic_search(user, query, scope=None, limit=None):
-    """Embed the query and rank stored chunk vectors within visible scope."""
+    """Embed the query and rank stored chunk vectors within visible scope.
+
+    On PostgreSQL the nearest neighbours are computed in the database
+    (ORDER BY distance, HNSW index); everywhere else the SQLite fallback runs
+    Python cosine over the permission-filtered candidate set. Permission
+    filtering happens before either ranking path.
+    """
     limit = limit or getattr(settings, "SEARCH_SEMANTIC_TOP_K", 12)
-    min_similarity = getattr(settings, "SEARCH_MIN_SIMILARITY", 0.15)
     if not query.strip():
         return []
+    candidate_ids = list(_candidate_chunks(user, scope).values_list("pk", flat=True))
+    if not candidate_ids:
+        return []
+
+    provider, query_vector = _embed_query(query)
+
+    from search.backends import rank_chunks_pg, use_pgvector
+
+    if use_pgvector():
+        ranked_ids = rank_chunks_pg(user, scope, query_vector, limit=limit)
+        if not ranked_ids:
+            return []
+        entries_by_chunk = {
+            entry.chunk_id: entry
+            for entry in ChunkEmbedding.objects.filter(chunk_id__in=ranked_ids)
+            .select_related("chunk", "chunk__resource")
+        }
+        results = []
+        for chunk_id in ranked_ids:
+            entry = entries_by_chunk.get(chunk_id)
+            if entry is not None:
+                results.append(SearchResult(chunk=entry.chunk, semantic_score=1.0))
+        return results
+
     embeddings = ChunkEmbedding.objects.select_related(
         "chunk", "chunk__resource"
-    ).filter(chunk__in=_candidate_chunks(user, scope))
+    ).filter(chunk_id__in=candidate_ids)
     if not embeddings.exists():
         return []
 
-    provider = get_provider()
-    query_vector = provider.embed([query])[0]
-
+    min_similarity = getattr(settings, "SEARCH_MIN_SIMILARITY", 0.15)
     scored = []
     for entry in embeddings:
         if entry.model_name != provider.model or len(entry.vector) != len(query_vector):

@@ -297,6 +297,9 @@ AI_CHAT_MODEL = os.getenv("AI_CHAT_MODEL", "")
 SEARCH_SEMANTIC_TOP_K = 12
 SEARCH_KEYWORD_TOP_K = 12
 SEARCH_MIN_SIMILARITY = 0.15
+# PostgreSQL/pgvector dimension for the vector column (0 disables the SQL
+# ranking path; the SQLite dev fallback is Python cosine).
+SEARCH_PGVECTOR_DIM = int(os.getenv("SEARCH_PGVECTOR_DIM", "768"))
 
 # AI Librarian (Phase 5). Retrieved text is DATA, never instructions; the
 # answer must cite only the sources actually provided in the context.
