@@ -23,5 +23,6 @@ urlpatterns = [
     path("library/", include("library.urls")),
     path("search/", include("search.urls")),
     path("ai/", include("ai.urls")),
+    path("api/v1/", include("api.urls")),
     path("", include("accounts.urls")),
 ]

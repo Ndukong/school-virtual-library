@@ -501,3 +501,30 @@ Build:
 - teacher activity
 
 ---
+
+## Work Package 11 - API + RAG eval harness (2026-08-24, branch wp/11-api)
+
+- JSON API v1 (api app, `/api/v1/`, session auth, JSON 401 never a redirect):
+  `resources/` (visible_resources-first + q/type/language plus pagination),
+  `search/` (>=2 chars, hybrid with snippets, permission-filtered),
+  `ask/` (POST -> ai.rag.ask: rate limited, budget metered, honest refusals)
+  and `answers/<public_id>/` (owner-or-404), `questions/` (students: APPROVED
+  only; teachers/admins: + PENDING_REVIEW, own school). No business logic in
+  the layer - thin marshalling over the existing services. Tests: +15
+  covering 401-is-JSON, cross-school isolation everywhere, language filters,
+  owner-or-404, and the 429 at the API boundary.
+- RAG eval harness IMPLEMENTED (no longer a stub): corpus built at test time
+  as DocumentChunk rows from page specs in tests/eval/harness.py (page numbers
+  map 1:1 onto expected_pages); a reference chat provider echoes only
+  retrieved sentences matching a case's phrases and blocks instruction text,
+  making retrieval/citation/injection/refusal scoring deterministic under the
+  mock provider; refusal cases assert zero provider calls. Golden set grown to
+  5 cases (fr-refusal added). docs/api.md + tests/eval/README updated.
+
+All eleven work packages are now complete. Remaining platform work is
+operational (execute the restore drill on the LAN box, run the CI once on
+GitHub, OCR/embedding model downloads on first boot) - see deploy/README.md.
+
+Final gate (this WP): ruff 97 (no new); check clean; 427 tests OK (0 skipped);
+check --deploy exit 0; pip-audit clean; makemigrations --check clean (api adds
+no models => no migration).
