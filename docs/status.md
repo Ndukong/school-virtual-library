@@ -61,6 +61,30 @@ wp/3-file-serving)
 Gate: ruff 90 (86 baseline + 4 pre-existing RUF012; WP3 files zero); check
 clean; check --deploy exit 0; 345 tests OK (3 skipped); pip-audit clean.
 
+## Work Package 4 - OCR (2026-08-23, branch wp/4-ocr)
+
+- `documents/ocr.py`: OCR runs between EXTRACT and CHUNK for blank pages.
+  Real engine = ocrmypdf (needs Tesseract + Ghostscript on PATH, languages
+  eng,fra via DOCUMENTS_OCR_LANGUAGES); deterministic fake engine behind
+  DOCUMENTS_OCR_FAKE_ENGINE for tests.
+- Per-page progress ProcessingLog INFO, resumability (needs_ocr && ocr_at
+  null), per-resource timeout + page cap (DOCUMENTS_OCR_TIMEOUT_SECONDS /
+  DOCUMENTS_OCR_MAX_PAGES). Low-confidence (<0.4) pages log WARNING and set
+  Resource.needs_teacher_review along with any still-needs_ocr pages. Text is
+  never fabricated: unreadable-after-OCR pages stay flagged.
+- Behavior change (WP4 spec): a fully-scanned set no longer fails the
+  resource - it is flagged for OCR/review and can still reach READY (CHUNK
+  tolerates zero chunks, EMBED tolerates an empty set). Corruption still
+  fails cleanly before OCR.
+- DEPLOYMENT CAVEAT: this machine has no Tesseract binary, so the live OCR
+  path is unverified here; the whole pipeline is exercised through the fake
+  engine. To enable real OCR on the school box install tesseract + ghostscript
+  and confirm `tesseract --version`, then uploads auto-OCR blank pages
+  (eng/fra).
+
+Gate: ruff 90 (WP4 files zero new); check clean; 352 tests OK (3 skipped);
+check --deploy exit 0; pip-audit clean.
+
 ## Work Package 2 - production settings hardening (2026-08-23, branch
 wp/2-prod-settings)
 
@@ -146,8 +170,8 @@ Baseline gate (2026-08-23): ruff 156->86 remaining (71 autofixed in `style: appl
 
 ## Not started
 
-OCR · French/i18n · offline PWA caching · pgvector · DRF API · RAG eval ·
-backups & deployment
+French/i18n · offline PWA caching · pgvector · DRF API · RAG eval · backups &
+deployment
 
 ## Update rule
 
