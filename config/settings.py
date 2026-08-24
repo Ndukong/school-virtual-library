@@ -310,6 +310,16 @@ STUDY_PROMPT_VERSION = "study-v1"
 RAG_USE_CACHE = _env_bool("RAG_USE_CACHE", default=True)
 RAG_CACHE_TTL = int(os.getenv("RAG_CACHE_TTL", "86400"))
 AI_EMBEDDING_QUERY_CACHE_TTL = int(os.getenv("AI_EMBEDDING_QUERY_CACHE_TTL", "86400"))
+
+# Per-school AI budgets (WP5), counted on AIRequestLog. 0 = unlimited.
+AI_BUDGET_DAILY_REQUESTS = int(os.getenv("AI_BUDGET_DAILY_REQUESTS", "0"))
+AI_BUDGET_MONTHLY_REQUESTS = int(os.getenv("AI_BUDGET_MONTHLY_REQUESTS", "0"))
+AI_BUDGET_DAILY_TOKENS = int(os.getenv("AI_BUDGET_DAILY_TOKENS", "0"))
+AI_BUDGET_MONTHLY_TOKENS = int(os.getenv("AI_BUDGET_MONTHLY_TOKENS", "0"))
+
+# Per-resource chunk cap and per-school storage quota (WP5).
+DOCUMENTS_MAX_CHUNKS = int(os.getenv("DOCUMENTS_MAX_CHUNKS", "1000"))
+SCHOOL_STORAGE_QUOTA_MB = int(os.getenv("SCHOOL_STORAGE_QUOTA_MB", "5000"))
 AI_RATE_LIMIT_PER_MINUTE = 10
 # Atomic cache-counter rate limiting (WP2) - a Redis cache is shared across
 # processes; locmem is per-process. Set False to keep the DB-count path

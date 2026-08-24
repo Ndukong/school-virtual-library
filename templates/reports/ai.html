@@ -11,6 +11,14 @@
         <li>Study materials generated: {{ stats.generation_total }} ({{ stats.generation_failures }} failures)</li>
       </ul>
     </div>
+    <div class="card"><h2>School AI budget (this period)</h2>
+      <ul class="plain-list">
+        <li>Today: {{ stats.budget_usage.day_requests }} request(s),
+          {{ stats.budget_usage.day_tokens }} token(s){% if stats.budget_caps.day_requests %} / {{ stats.budget_caps.day_requests }} cap{% endif %}</li>
+        <li>This month: {{ stats.budget_usage.month_requests }} request(s),
+          {{ stats.budget_usage.month_tokens }} token(s){% if stats.budget_caps.month_requests %} / {{ stats.budget_caps.month_requests }} cap{% endif %}</li>
+      </ul>
+    </div>
     {% if stats.by_scope %}
       <div class="card"><h2>Questions by scope</h2>
         <ul class="plain-list">{% for row in stats.by_scope %}<li>{{ row.scope }}: {{ row.count }}</li>{% endfor %}</ul>

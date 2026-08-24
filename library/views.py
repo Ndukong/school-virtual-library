@@ -10,7 +10,12 @@ from documents.models import ProcessingJob
 from library.files import build_file_response, sanitize_original_filename
 from library.forms import ResourceForm
 from library.models import Resource, ResourceAccessEvent
-from library.services import download_exceeded, user_can_read_resource, visible_resources
+from library.services import (
+    download_exceeded,
+    upload_within_quota,
+    user_can_read_resource,
+    visible_resources,
+)
 
 
 def user_can_upload(user):
@@ -165,7 +170,11 @@ class ResourceUploadView(AdminOrTeacherRequiredMixin, CreateView):
             resource.school = form.cleaned_data["school"]
         else:
             resource.school = self.request.user.school
-        resource.store_file(form.cleaned_data["file"])
+        uploaded = form.cleaned_data["file"]
+        if not upload_within_quota(resource.school, uploaded.size):
+            form.add_error("file", "School storage quota reached; ask an administrator.")
+            return self.form_invalid(form)
+        resource.store_file(uploaded)
         resource.processing_status = Resource.ProcessingStatus.UPLOADED
         resource.save()
         # Queue the processing pipeline (runs inline when configured). EXTRACT

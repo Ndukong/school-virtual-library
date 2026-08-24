@@ -206,7 +206,12 @@ def ask(user, question, scope=AIInteraction.Scope.LIBRARY,
         full_prompt = user_prompt
 
     try:
-        result = provider.generate(full_prompt, system=SYSTEM_PROMPT)
+        from ai.budget import enforce_budget
+        from ai.context import school_context
+
+        enforce_budget(user.school)
+        with school_context(user.school):
+            result = provider.generate(full_prompt, system=SYSTEM_PROMPT)
     except AIError as exc:
         interaction.answer = (
             "The AI service is temporarily unavailable. Please try again shortly."

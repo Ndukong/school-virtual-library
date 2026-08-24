@@ -16,6 +16,10 @@ class AIRequestLog(models.Model):
     provider = models.CharField(max_length=40)
     model = models.CharField(max_length=120)
     kind = models.CharField(max_length=12, choices=Kind.choices)
+    # Populated from the active school context at call time (WP5 budgets).
+    school = models.ForeignKey(
+        "schools.School", on_delete=models.PROTECT, null=True, blank=True, related_name="ai_request_logs"
+    )
     ok = models.BooleanField(default=True)
     error = models.TextField(blank=True)
     input_items = models.PositiveIntegerField(default=1)

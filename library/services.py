@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.db.models import Sum
 from django.utils import timezone
 
 from accounts.permissions import is_admin
@@ -116,3 +117,23 @@ def download_exceeded(user):
     if daily >= getattr(settings, "LIBRARY_DOWNLOAD_DAILY_CAP", 50):
         return "daily"
     return None
+
+
+def storage_quota_state(school):
+    """Current school storage usage in bytes plus the configured cap."""
+    used = (
+        Resource.objects.filter(school=school)
+        .exclude(file_size__isnull=True)
+        .aggregate(total=Sum("file_size"))["total"]
+        or 0
+    )
+    cap = getattr(settings, "SCHOOL_STORAGE_QUOTA_MB", 5000) * 1024 * 1024
+    return {"used": used, "cap": cap}
+
+
+def upload_within_quota(school, incoming_bytes):
+    """True when incoming_bytes fits inside the school storage quota."""
+    state = storage_quota_state(school)
+    if not state["cap"]:
+        return True
+    return state["used"] + incoming_bytes <= state["cap"]

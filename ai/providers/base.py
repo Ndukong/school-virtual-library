@@ -77,10 +77,13 @@ class BaseProvider(abc.ABC):
     # -- shared plumbing -------------------------------------------------
 
     def _log(self, kind, ok, latency_ms, input_items=1, error="", tokens_in=None, tokens_out=None):
+        from ai.context import current_school
+
         AIRequestLog.objects.create(
             provider=self.name,
             model=self.model,
             kind=kind,
+            school=current_school(),
             ok=ok,
             error=str(error)[:5000],
             input_items=input_items,

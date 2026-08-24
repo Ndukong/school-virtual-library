@@ -189,6 +189,16 @@ def chunk_resource(resource):
         buffer_pages.append(page_number)
     flush()
 
+    # Per-resource chunk cap (WP5): never index unboundedly many chunks.
+    max_chunks = getattr(settings, "DOCUMENTS_MAX_CHUNKS", 1000)
+    if len(chunks) > max_chunks:
+        log_event(
+            resource,
+            ProcessingLog.Level.WARNING,
+            f"Chunking produced {len(chunks)} chunks; capped at {max_chunks}.",
+        )
+        chunks = chunks[:max_chunks]
+
     DocumentChunk.objects.bulk_create(
         DocumentChunk(
             resource=resource,
@@ -234,10 +244,16 @@ def embed_resource_chunks(resource):
     )
     embedded_now = 0
     batch_size = 16
+    if pending_chunks:
+        from ai.budget import enforce_budget
+        from ai.context import school_context
+
+        enforce_budget(resource.school)
     for start in range(0, len(pending_chunks), batch_size):
         batch = pending_chunks[start : start + batch_size]
         try:
-            vectors = provider.embed([chunk.text for chunk in batch])
+            with school_context(resource.school):
+                vectors = provider.embed([chunk.text for chunk in batch])
         except Exception as exc:
             raise PipelineError(f"Embedding failed: {exc}") from exc
         for chunk, vector in zip(batch, vectors):

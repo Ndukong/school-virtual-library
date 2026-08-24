@@ -148,9 +148,14 @@ def generate_study_material(user, kind, scope=AIInteraction.Scope.LIBRARY,
     provider = chat_provider or get_chat_provider()
 
     try:
-        result = provider.generate(
-            f"{context}\n\n{task}", system=STUDY_SYSTEM_PROMPT
-        )
+        from ai.budget import enforce_budget
+        from ai.context import school_context
+
+        enforce_budget(user.school)
+        with school_context(user.school):
+            result = provider.generate(
+                f"{context}\n\n{task}", system=STUDY_SYSTEM_PROMPT
+            )
     except AIError as exc:
         generation.content = (
             "The AI service is temporarily unavailable. Please try again shortly."

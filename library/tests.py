@@ -470,3 +470,44 @@ class FileServingHardeningTests(LibraryTestBase):
         for _ in range(2):
             self.assertEqual(self.client.get(url).status_code, 200)
         self.assertEqual(self.client.get(url).status_code, 429)
+@override_settings(SCHOOL_STORAGE_QUOTA_MB=1)
+class StorageQuotaTests(LibraryTestBase):
+    def test_quota_rejects_upload_when_school_is_full(self):
+        # School already uses the full 1MB quota.
+        Resource.objects.create(
+            school=self.school_a, title="Filler", uploaded_by=self.teacher_a,
+            resource_type=Resource.ResourceType.NOTES, file_size=1024 * 1024,
+        )
+        self.client.force_login(self.teacher_a)
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        response = self.client.post(
+            reverse("library-upload"),
+            {
+                "title": "Quota Blocked",
+                "resource_type": Resource.ResourceType.NOTES,
+                "licensing_status": Resource.LicensingStatus.OWNED,
+                "access_policy": Resource.AccessPolicy.SCHOOL,
+                "file": SimpleUploadedFile("quota.pdf", b"%PDF-1.4"),
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "School storage quota reached")
+        self.assertFalse(Resource.objects.filter(title="Quota Blocked").exists())
+
+    def test_normal_upload_passes_quota(self):
+        self.client.force_login(self.teacher_a)
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        response = self.client.post(
+            reverse("library-upload"),
+            {
+                "title": "Quota Fine",
+                "resource_type": Resource.ResourceType.NOTES,
+                "licensing_status": Resource.LicensingStatus.OWNED,
+                "access_policy": Resource.AccessPolicy.SCHOOL,
+                "file": SimpleUploadedFile("ok.pdf", b"%PDF-1.4"),
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Resource.objects.filter(title="Quota Fine").exists())

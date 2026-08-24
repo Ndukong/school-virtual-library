@@ -485,3 +485,17 @@ class FakeOcrPipelineTests(DocumentsTestBase):
         self.assertEqual(resource.processing_status, Resource.ProcessingStatus.READY)
         self.assertEqual(resource.extracted_pages.filter(has_text=True).count(), 2)
         self.assertGreaterEqual(resource.chunks.count(), 1)
+@override_settings(DOCUMENTS_MAX_CHUNKS=5)
+class ChunkCapTests(DocumentsTestBase):
+    def test_chunk_cap_truncates_and_warns(self):
+        from documents.services import chunk_resource
+
+        resource = self.make_pdf_resource(pages=("unrelated material text " * 300,) * 8)
+        extract_text(resource)
+        chunk_resource(resource)
+        self.assertEqual(resource.chunks.count(), 5)
+        self.assertTrue(
+            resource.processing_logs.filter(
+                level=ProcessingLog.Level.WARNING, message__icontains="capped"
+            ).exists()
+        )

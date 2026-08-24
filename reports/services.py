@@ -104,8 +104,12 @@ def library_stats(school):
 
 
 def ai_stats(school):
+    from ai.budget import caps, usage
+
     interactions = AIInteraction.objects.filter(school=school)
     generations = AIGeneration.objects.filter(school=school)
+    budget_usage = usage(school)
+    budget_caps = caps()
     return {
         "interaction_total": interactions.count(),
         "generation_total": generations.count(),
@@ -122,6 +126,8 @@ def ai_stats(school):
             .values("model").annotate(count=Count("pk")).order_by("-count")[:6]
         ),
         "recent_days": _recent_days_by_local_date(interactions),
+        "budget_usage": budget_usage,
+        "budget_caps": budget_caps,
     }
 
 
