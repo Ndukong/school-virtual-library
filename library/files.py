@@ -18,7 +18,6 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.http import FileResponse, HttpResponse
-from django.utils import timezone
 
 _FILENAME_UNSAFE = re.compile(r"[^A-Za-z0-9._ -]")
 
@@ -79,7 +78,7 @@ def build_file_response(request, resource, disposition, filename):
     name = resource.file.name
     size = resource.file_size or storage.size(name)
     mtime = _posix_mtime(storage, name)
-    etag = '"%s"' % hashlib.md5(f"{name}:{size}".encode("utf-8")).hexdigest()
+    etag = f'"{hashlib.md5(f"{name}:{size}".encode()).hexdigest()}"'
     last_modified = formatdate(mtime, usegmt=True)
 
     if getattr(settings, "LIBRARY_XACCEL_ENABLED", False):
