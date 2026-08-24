@@ -307,6 +307,9 @@ RAG_TOP_K = 8
 RAG_MAX_CONTEXT_CHARS = 6000
 RAG_PROMPT_VERSION = "rag-v1"
 STUDY_PROMPT_VERSION = "study-v1"
+RAG_USE_CACHE = _env_bool("RAG_USE_CACHE", default=True)
+RAG_CACHE_TTL = int(os.getenv("RAG_CACHE_TTL", "86400"))
+AI_EMBEDDING_QUERY_CACHE_TTL = int(os.getenv("AI_EMBEDDING_QUERY_CACHE_TTL", "86400"))
 AI_RATE_LIMIT_PER_MINUTE = 10
 # Atomic cache-counter rate limiting (WP2) - a Redis cache is shared across
 # processes; locmem is per-process. Set False to keep the DB-count path

@@ -335,3 +335,25 @@ class PgvectorBackendTests(SimpleTestCase):
         out = StringIO()
         call_command("backfill_pg_vectors", stdout=out)
         self.assertIn("PostgreSQL", out.getvalue())
+class EmbeddingQueryCacheTests(TestCase):
+    def test_query_vector_cached_per_model_and_normalized(self):
+        from django.core.cache import cache
+
+        from search.services import _embed_query
+
+        cache.clear()
+        calls = {"n": 0}
+
+        class CountingProvider:
+            model = "test-model"
+
+            def embed(self, texts):
+                calls["n"] += 1
+                return [[0.1, 0.2, 0.3, 0.4]]
+
+        with mock.patch("search.services.get_provider", return_value=CountingProvider()):
+            first = _embed_query("Electromagnetic induction")
+            second = _embed_query("electromagnetic   INDUCTION")
+        self.assertEqual(calls["n"], 1)
+        self.assertEqual(first[1], second[1])
+        self.assertEqual(first[1], [0.1, 0.2, 0.3, 0.4])

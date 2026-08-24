@@ -108,8 +108,20 @@ def cosine_similarity(a, b):
 
 
 def _embed_query(query):
+    """Embed a query, caching the vector per provider+model (WP5)."""
+    import hashlib
+
+    from django.core.cache import cache
+
     provider = get_provider()
-    return provider, provider.embed([query])[0]
+    normalized = " ".join(query.strip().lower().split())
+    key = f"qemb:{provider.model}:{hashlib.sha256(normalized.encode()).hexdigest()}"
+    cached = cache.get(key)
+    if cached is not None:
+        return provider, cached
+    vector = provider.embed([query])[0]
+    cache.set(key, list(vector), getattr(settings, "AI_EMBEDDING_QUERY_CACHE_TTL", 86400))
+    return provider, vector
 
 
 def semantic_search(user, query, scope=None, limit=None):

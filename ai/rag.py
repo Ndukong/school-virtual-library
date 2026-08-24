@@ -144,6 +144,32 @@ def ask(user, question, scope=AIInteraction.Scope.LIBRARY,
         user, scope, resource_public_id, chapter_id
     )
     grounded = scope_label != AIInteraction.Scope.GENERAL
+    normalized = normalize_question(question)
+
+    cache_key = None
+    if grounded and getattr(settings, "RAG_USE_CACHE", True):
+        cache_key = _answer_cache_key(
+            user, scope_label, normalized, chat_provider,
+            getattr(settings, "RAG_PROMPT_VERSION", "rag-v1"),
+        )
+        if cache_key is not None:
+            from django.core.cache import cache
+
+            hit = cache.get(cache_key)
+            if hit is not None:
+                interaction = AIInteraction(
+                    user=user,
+                    school=user.school,
+                    scope=scope_label,
+                    question=question.strip(),
+                    prompt_version=getattr(settings, "RAG_PROMPT_VERSION", "rag-v1"),
+                    retrieved_count=len(hit.get("chunk_ids", [])),
+                    answer=hit["answer"],
+                    cited_chunk_ids=hit.get("chunk_ids", []),
+                    used_provider=False,
+                )
+                interaction.save()
+                return interaction
 
     results = []
     if grounded:
@@ -199,7 +225,58 @@ def ask(user, question, scope=AIInteraction.Scope.LIBRARY,
     interaction.used_provider = True
     interaction.cited_chunk_ids = cited_chunk_ids
     interaction.save()
+    if cache_key is not None:
+        from django.core.cache import cache
+
+        cache.set(
+            cache_key,
+            {"answer": interaction.answer, "chunk_ids": cited_chunk_ids},
+            getattr(settings, "RAG_CACHE_TTL", 86400),
+        )
     return interaction
+
+
+def normalize_question(question):
+    """Cache-normalized form of a question (lower, whitespace-collapsed)."""
+    return " ".join((question or "").strip().lower().split())
+
+
+def _answer_cache_key(user, scope_label, normalized, chat_provider, prompt_version):
+    """A deterministic cache key, or None when the chat model is unknown.
+
+    Model-unknown (e.g. chat provider not configured) means the answer must
+    not be cached under a generic key that could collide across models.
+    """
+    import hashlib
+
+    from django.core.cache import cache
+
+    from library.models import Resource
+
+    if chat_provider is not None:
+        model = getattr(chat_provider, "model", "")
+    else:
+        try:
+            model = get_chat_provider().model
+        except AIError:
+            return None
+    if not model:
+        return None
+
+    version_key = f"school-res-ver:{user.school_id}"
+    version = cache.get(version_key)
+    if version is None:
+        latest = (
+            Resource.objects.filter(school_id=user.school_id)
+            .order_by("-updated_at")
+            .values_list("updated_at", flat=True)
+            .first()
+        )
+        version = latest.timestamp() if latest else 0
+        cache.set(version_key, version, 60)
+    fingerprint = hashlib.sha256(normalized.encode()).hexdigest()
+    scope = (user.school_id or 0)
+    return f"rag:{scope}:{scope_label}:{version}:{model}:{prompt_version}:{fingerprint}"
 
 
 def sources_for(interaction):

@@ -5,6 +5,7 @@ from django.conf import settings
 from ai.providers.base import AIError
 from ai.providers.gemini import GeminiProvider
 from ai.providers.groq import DEFAULT_GROQ_MODEL, GroqProvider
+from ai.providers.local import LocalFastembedProvider
 from ai.providers.mock import MockAIProvider
 from ai.providers.openai_compat import OpenAICompatibleProvider
 
@@ -13,6 +14,7 @@ _REGISTRY = {
     "openai_compatible": OpenAICompatibleProvider,
     "gemini": GeminiProvider,
     "groq": GroqProvider,
+    "local": LocalFastembedProvider,
 }
 
 # Sensible default chat models per provider; AI_CHAT_MODEL overrides.
@@ -34,7 +36,7 @@ def _build(kind, api_key, model):
         raise AIError(
             f"Unknown AI provider '{kind}'. Available: {', '.join(available_providers())}."
         ) from None
-    if kind != "mock" and not api_key:
+    if kind not in ("mock", "local") and not api_key:
         raise AIError(
             f"AI_API_KEY is required for the '{kind}' provider "
             "(set it in .env, or use AI_PROVIDER/AI_CHAT_PROVIDER=mock offline)."
@@ -45,10 +47,17 @@ def _build(kind, api_key, model):
 def get_provider(kind=None, model=None):
     """Build the configured embedding/general provider instance."""
     kind = (kind or getattr(settings, "AI_PROVIDER", "mock") or "mock").lower()
+    configured = getattr(settings, "AI_EMBEDDING_MODEL", "mock-embed-small")
+    if kind == "local" and (not configured or configured == "mock-embed-small"):
+        # A school box with AI_PROVIDER=local should not silently keep the
+        # mock model name; default to the bilingual offline model.
+        from ai.providers.local import DEFAULT_LOCAL_EMBEDDING_MODEL
+
+        configured = DEFAULT_LOCAL_EMBEDDING_MODEL
     return _build(
         kind,
         api_key=getattr(settings, "AI_API_KEY", ""),
-        model=model or getattr(settings, "AI_EMBEDDING_MODEL", "mock-embed-small"),
+        model=model or configured,
     )
 
 

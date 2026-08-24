@@ -102,6 +102,18 @@ class ProviderConfigurationTests(TestCase):
                                AI_CHAT_MODEL="llama-3.1-8b-instant"):
             self.assertEqual(get_chat_provider().model, "llama-3.1-8b-instant")
 
+    def test_local_embedding_provider_registered_but_embeddings_only(self):
+        from ai.providers import available_providers, get_provider
+        from ai.providers.base import AIError
+        from ai.providers.local import LocalFastembedProvider
+
+        self.assertIn("local", available_providers())
+        provider = get_provider(kind="local", model="")
+        self.assertIsInstance(provider, LocalFastembedProvider)
+        self.assertEqual(provider.model, "intfloat/multilingual-e5-small")
+        with self.assertRaises(AIError):
+            provider.generate("prompt", system="system")
+
 
 class ContextAndCitationTests(TestCase):
     def test_context_blocks_are_numbered_and_delimited(self):
@@ -176,6 +188,36 @@ class AskFlowTests(RagTestBase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("error=", response.url)
         self.assertEqual(AIInteraction.objects.count(), before)
+
+    def test_rag_answer_cached_until_school_resources_change(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        provider = fake_chat_provider("Cached grounded answer [1].")
+        with mock.patch("ai.rag.get_chat_provider", return_value=provider):
+            first = ask(self.student_a, "How does induction work?")
+            second = ask(self.student_a, "How does induction work?")
+        self.assertEqual(provider.generate.call_count, 1)
+        self.assertEqual(first.answer, second.answer)
+        self.assertFalse(second.used_provider)
+
+        # Any resource change in the school invalidates the cache.
+        self.resource.save()  # bumps updated_at
+        cache.delete(f"school-res-ver:{self.school_a.pk}")
+        with mock.patch("ai.rag.get_chat_provider", return_value=provider):
+            ask(self.student_a, "How does induction work?")
+        self.assertEqual(provider.generate.call_count, 2)
+
+    def test_rag_cache_can_be_disabled(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        provider = fake_chat_provider("answer")
+        with override_settings(RAG_USE_CACHE=False):
+            with mock.patch("ai.rag.get_chat_provider", return_value=provider):
+                ask(self.student_a, "How does induction work?")
+                ask(self.student_a, "How does induction work?")
+        self.assertEqual(provider.generate.call_count, 2)
 
     def test_grounded_answer_records_citations_and_sources(self):
         with mock.patch("ai.rag.get_chat_provider",
