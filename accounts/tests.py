@@ -10,7 +10,6 @@ from accounts.models import LoginFailure, LoginLock, User
 from accounts.permissions import has_role, is_admin, is_student, is_teacher
 from accounts.services import (
     check_login_lock,
-    complete_password_change,
     reset_password,
     reset_user_locks,
 )
@@ -333,8 +332,8 @@ class LoginLockoutTests(TestCase):
     def test_lock_is_keyed_per_ip(self):
         client = Client()
         client.post(reverse("login"), {"username": "lockstudent", "password": "wrong"})
-        blocked_a, wait_a = check_login_lock("lockstudent", "127.0.0.1")
-        blocked_b, wait_b = check_login_lock("lockstudent", "203.0.113.7")
+        blocked_a, _ = check_login_lock("lockstudent", "127.0.0.1")
+        blocked_b, _ = check_login_lock("lockstudent", "203.0.113.7")
         self.assertTrue(blocked_a)
         self.assertFalse(blocked_b)
 
@@ -398,7 +397,7 @@ class PasswordResetTests(TestCase):
         client.post(reverse("login"), {"username": "resetstudent", "password": temporary})
         page = client.get(reverse("force-password-change"))
         self.assertEqual(page.status_code, 200)
-        response = client.post(
+        client.post(
             reverse("force-password-change"),
             {"new_password1": "NewSecurePass123!", "new_password2": "NewSecurePass123!"},
             follow=True,

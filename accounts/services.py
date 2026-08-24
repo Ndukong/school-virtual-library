@@ -19,7 +19,6 @@ from django.utils import timezone
 
 from accounts.models import LoginFailure, LoginLock, PasswordReset
 
-
 # ---------------------------------------------------------------------------
 # Login lockout
 # ---------------------------------------------------------------------------
