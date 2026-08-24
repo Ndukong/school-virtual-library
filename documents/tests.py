@@ -125,11 +125,21 @@ class ExtractionTests(DocumentsTestBase):
             ProcessingLog.objects.filter(resource=resource, level=ProcessingLog.Level.WARNING).exists()
         )
 
-    def test_fully_scanned_document_raises(self):
+    def test_fully_scanned_document_flags_ocr_not_fails(self):
+        # WP4: a fully-scanned page set does not fail the resource; with no
+        # OCR engine the pages are flagged needs_ocr and the resource is
+        # marked for teacher review (text is never fabricated).
+        from documents.ocr import run_ocr_for_resource
+
         resource = self.make_pdf_resource(pages=("", ""))
-        with self.assertRaises(PipelineError) as ctx:
-            extract_text(resource)
-        self.assertIn("OCR is required", str(ctx.exception))
+        stats = extract_text(resource)
+        self.assertEqual(stats["pages_without_text"], 2)
+        outcome = run_ocr_for_resource(resource)
+        self.assertEqual(outcome["status"], "unavailable")
+        self.assertTrue(resource.extracted_pages.filter(needs_ocr=True).count() == 2)
+        resource.refresh_from_db()
+        self.assertTrue(resource.needs_teacher_review)
+        self.assertFalse(resource.extracted_pages.filter(has_text=True).exists())
 
 
 class ChunkingTests(DocumentsTestBase):
@@ -294,10 +304,14 @@ class InlinePipelineIntegrationTests(DocumentsTestBase):
             },
         )
         resource = Resource.objects.get(title="Scanned Book")
-        self.assertEqual(resource.processing_status, Resource.ProcessingStatus.FAILED)
+        # WP4: a scanned upload no longer fails; OCR unavailable flags the
+        # pages and the resource completes with a review marker.
+        self.assertEqual(resource.processing_status, Resource.ProcessingStatus.READY)
+        self.assertTrue(resource.needs_teacher_review)
+        self.assertTrue(resource.extracted_pages.filter(needs_ocr=True).count() == 2)
         self.assertTrue(
             resource.processing_logs.filter(
-                level=ProcessingLog.Level.ERROR, message__icontains="OCR"
+                level=ProcessingLog.Level.WARNING, message__icontains="OCR engine unavailable"
             ).exists()
         )
 
@@ -356,3 +370,118 @@ class AdminScopingTests(DocumentsTestBase):
         queryset = DocumentChunkAdmin(DocumentChunk, admin_site).get_queryset(request)
         resources = set(queryset.values_list("resource__title", flat=True))
         self.assertEqual(resources, {"Mine"})
+@override_settings(DOCUMENTS_OCR_FAKE_ENGINE=True)
+class FakeOcrPipelineTests(DocumentsTestBase):
+    """WP4: OCR between EXTRACT and CHUNK with a deterministic fake engine."""
+
+    def setUp(self):
+        super().setUp()
+
+    def _blank_resource(self, count=2, title="Scanned doc"):
+        return self.make_pdf_resource(
+            pages=tuple("" for _ in range(count)), title=title,
+            content=build_pdf([""] * count),
+        )
+
+    def test_blank_pages_ocred_with_progress_logs(self):
+        from documents.ocr import run_ocr_for_resource
+
+        resource = self._blank_resource()
+        extract_text(resource)
+        outcome = run_ocr_for_resource(resource)
+        self.assertEqual(outcome["status"], "ok")
+        self.assertEqual(outcome["ocr_pages"], 2)
+        for page in resource.extracted_pages.all():
+            self.assertTrue(page.has_text)
+            self.assertFalse(page.needs_ocr)
+            self.assertIsNotNone(page.ocr_at)
+            self.assertAlmostEqual(page.ocr_confidence, 0.9)
+        self.assertTrue(
+            resource.processing_logs.filter(
+                level=ProcessingLog.Level.INFO, message__icontains="OCR page"
+            ).count() >= 2
+        )
+
+    def test_mixed_text_and_scanned(self):
+        from documents.ocr import run_ocr_for_resource
+
+        resource = self.make_pdf_resource(pages=("Native text page.", ""))
+        extract_text(resource)
+        first = resource.extracted_pages.get(page_number=1)
+        second = resource.extracted_pages.get(page_number=2)
+        self.assertTrue(first.has_text)
+        self.assertFalse(second.has_text)
+        run_ocr_for_resource(resource)
+        second.refresh_from_db()
+        self.assertTrue(second.has_text)
+        self.assertIn("OCR page 2", second.text)
+
+    def test_low_confidence_marks_teacher_review(self):
+        from documents.ocr import run_ocr_for_resource
+
+        with override_settings(DOCUMENTS_OCR_FAKE_CONFIDENCE=0.2):
+            resource = self._blank_resource()
+            extract_text(resource)
+            run_ocr_for_resource(resource)
+        resource.refresh_from_db()
+        self.assertTrue(resource.needs_teacher_review)
+        self.assertTrue(
+            resource.processing_logs.filter(
+                level=ProcessingLog.Level.WARNING, message__icontains="Low-confidence"
+            ).exists()
+        )
+
+    def test_unreadable_after_ocr_not_fabricated(self):
+        from documents.ocr import run_ocr_for_resource
+
+        with override_settings(DOCUMENTS_OCR_FAKE_EMPTY=True):
+            resource = self._blank_resource()
+            extract_text(resource)
+            run_ocr_for_resource(resource)
+        resource.refresh_from_db()
+        self.assertTrue(resource.needs_teacher_review)
+        self.assertTrue(resource.extracted_pages.filter(has_text=True).count() == 0)
+        self.assertTrue(resource.extracted_pages.filter(needs_ocr=True).count() == 2)
+
+    def test_timeout_stops_then_resume_completes(self):
+        from documents.ocr import run_ocr_for_resource
+
+        resource = self._blank_resource(count=3, title="Timed out doc")
+        extract_text(resource)
+        with override_settings(
+            DOCUMENTS_OCR_FAKE_SLEEP=0.03, DOCUMENTS_OCR_TIMEOUT_SECONDS=0
+        ):
+            first = run_ocr_for_resource(resource)
+        self.assertLess(first["ocr_pages"], 3)
+        self.assertEqual(
+            resource.extracted_pages.filter(ocr_at__isnull=True).count(), 3 - first["ocr_pages"]
+        )
+        with override_settings(DOCUMENTS_OCR_FAKE_SLEEP=0):
+            second = run_ocr_for_resource(resource)
+        self.assertEqual(second["status"], "ok")
+        self.assertEqual(resource.extracted_pages.filter(ocr_at__isnull=True).count(), 0)
+        self.assertEqual(resource.extracted_pages.filter(has_text=True).count(), 3)
+
+    def test_engine_unavailable_path_flags_without_fail(self):
+        from documents.ocr import run_ocr_for_resource
+
+        resource = self._blank_resource()
+        extract_text(resource)
+        with override_settings(DOCUMENTS_OCR_FAKE_ENGINE=False):
+            outcome = run_ocr_for_resource(resource)
+        self.assertEqual(outcome["status"], "unavailable")
+        resource.refresh_from_db()
+        self.assertTrue(resource.needs_teacher_review)
+        self.assertTrue(resource.extracted_pages.filter(needs_ocr=True).count() == 2)
+
+    def test_full_pipeline_with_fake_engine_reaches_ready(self):
+        with override_settings(DOCUMENTS_INLINE_PROCESSING=True):
+            resource = self._blank_resource()
+            from documents.dispatcher import enqueue
+
+            enqueue(resource, ProcessingJob.Step.EXTRACT)
+            enqueue(resource, ProcessingJob.Step.CHUNK)
+        resource.refresh_from_db()
+        self.assertEqual(resource.processing_status, Resource.ProcessingStatus.READY)
+        self.assertEqual(resource.extracted_pages.filter(has_text=True).count(), 2)
+        self.assertGreaterEqual(resource.chunks.count(), 1)

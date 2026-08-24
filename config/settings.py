@@ -262,6 +262,18 @@ DOCUMENTS_CHUNK_OVERLAP = 150
 DOCUMENTS_MAX_ATTEMPTS = 3
 DOCUMENTS_MAX_PAGES = 2000
 
+# OCR (WP4). The real engine requires Tesseract + Ghostscript binaries for
+# ocrmypdf; when they are missing the pipeline marks pages needs_ocr and
+# carries on instead of failing (text is never fabricated). Tests inject a
+# deterministic fake engine via DOCUMENTS_OCR_FAKE_ENGINE.
+DOCUMENTS_OCR_TIMEOUT_SECONDS = int(os.getenv("DOCUMENTS_OCR_TIMEOUT_SECONDS", "300"))
+DOCUMENTS_OCR_MAX_PAGES = int(os.getenv("DOCUMENTS_OCR_MAX_PAGES", "500"))
+DOCUMENTS_OCR_LANGUAGES = os.getenv("DOCUMENTS_OCR_LANGUAGES", "eng,fra")
+DOCUMENTS_OCR_FAKE_ENGINE = _env_bool("DOCUMENTS_OCR_FAKE_ENGINE", default=False)
+DOCUMENTS_OCR_FAKE_CONFIDENCE = float(os.getenv("DOCUMENTS_OCR_FAKE_CONFIDENCE", "0.9"))
+DOCUMENTS_OCR_FAKE_EMPTY = _env_bool("DOCUMENTS_OCR_FAKE_EMPTY", default=False)
+DOCUMENTS_OCR_FAKE_SLEEP = float(os.getenv("DOCUMENTS_OCR_FAKE_SLEEP", "0"))
+
 # AI provider abstraction (AGENTS.md section 13). Provider-specific SDKs are
 # never used outside the ai app. "mock" runs offline with deterministic
 # vectors (tests/dev); "openai_compatible" targets NVIDIA NIM and any router

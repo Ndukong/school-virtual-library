@@ -46,8 +46,10 @@ def set_processing_status(resource, status):
 
 
 def ocr_available():
-    """OCR requires the Tesseract binary; not bundled in this phase."""
-    return False
+    """Whether the real OCR engine's binaries are reachable (WP4)."""
+    from documents.ocr import tesseract_available
+
+    return tesseract_available()
 
 
 def _normalize(text):
@@ -96,17 +98,11 @@ def extract_text(resource):
     if missing:
         sample = ", ".join(str(n) for n in missing[:10])
         suffix = "..." if len(missing) > 10 else ""
-        if len(missing) == len(pages):
-            raise PipelineError(
-                "No extractable text on any page: the PDF appears to be "
-                "scanned images. OCR is required but no OCR engine is "
-                f"configured (pages: {sample}{suffix})."
-            )
         log_event(
             resource,
             ProcessingLog.Level.WARNING,
-            f"{len(missing)} page(s) have no text layer and require OCR "
-            f"(pages: {sample}{suffix}). OCR is not configured in this phase.",
+            f"{len(missing)} page(s) have no text layer; OCR will be attempted "
+            f"(pages: {sample}{suffix}).",
         )
     return {"total_pages": len(pages), "pages_without_text": len(missing)}
 
@@ -150,9 +146,14 @@ def _split_oversized(fragment, chunk_size):
 
 @transaction.atomic
 def chunk_resource(resource):
-    """Build chunks from extracted pages, anchored to pages and structure."""
-    if not resource.extracted_pages.filter(has_text=True).exists():
-        raise PipelineError("No extractable text found; run extraction first.")
+    """Build chunks from extracted pages, anchored to pages and structure.
+
+    A resource may legally produce zero chunks when its pages carry no text
+    (e.g. OCR still pending); it is marked for teacher review rather than
+    failing. Only a total absence of extracted pages is an error.
+    """
+    if not resource.extracted_pages.exists():
+        raise PipelineError("No extracted pages found; run extraction first.")
     DocumentChunk.objects.filter(resource=resource).delete()
 
     chunk_size = getattr(settings, "DOCUMENTS_CHUNK_SIZE", 1200)
@@ -271,6 +272,19 @@ def execute_step(job):
             f"Extracted {stats['total_pages']} page(s); "
             f"{stats['pages_without_text']} without text layer.",
         )
+        # WP4: OCR runs between EXTRACT and CHUNK for blank pages. When the
+        # engine is unavailable the pages stay flagged needs_ocr and the
+        # resource is marked for teacher review - it is not failed.
+        if stats["pages_without_text"]:
+            set_processing_status(resource, Resource.ProcessingStatus.OCR_PROCESSING)
+            from documents.ocr import run_ocr_for_resource
+
+            ocr = run_ocr_for_resource(resource)
+            log_event(
+                resource,
+                ProcessingLog.Level.INFO,
+                f"OCR phase: {ocr['status']} (pages OCR'd: {ocr.get('ocr_pages', 0)}).",
+            )
     elif job.step == ProcessingJob.Step.CHUNK:
         if not resource.extracted_pages.exists():
             raise PipelineError("No extracted pages found; run extraction first.")
@@ -279,8 +293,6 @@ def execute_step(job):
         log_event(resource, ProcessingLog.Level.INFO, f"Created {stats['chunks']} chunk(s).")
         # READY is set by the EMBED step; dispatcher chains CHUNK -> EMBED.
     elif job.step == ProcessingJob.Step.EMBED:
-        if not resource.chunks.exists():
-            raise PipelineError("No chunks found; run chunking first.")
         set_processing_status(resource, Resource.ProcessingStatus.EMBEDDING)
         stats = embed_resource_chunks(resource)
         log_event(

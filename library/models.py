@@ -109,6 +109,9 @@ class Resource(TimeStampedModel):
         default=ProcessingStatus.UPLOADED,
     )
     is_active = models.BooleanField(default=True)
+    # WP4 OCR: set when any page remains unreadable (needs_ocr or
+    # low-confidence OCR) so a teacher can review it.
+    needs_teacher_review = models.BooleanField(default=False)
 
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="uploaded_resources"

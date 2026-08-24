@@ -22,6 +22,11 @@ class ExtractedPage(TimeStampedModel):
     page_number = models.PositiveIntegerField()
     text = models.TextField(blank=True)
     has_text = models.BooleanField(default=False)
+    # OCR workflow (WP4): blank pages are flagged for OCR; confidence 0..1
+    # records engine output (None when unknown). ocr_at enables resumability.
+    needs_ocr = models.BooleanField(default=False)
+    ocr_confidence = models.FloatField(null=True, blank=True)
+    ocr_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["resource", "page_number"]
