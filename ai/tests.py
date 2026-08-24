@@ -423,3 +423,48 @@ class CacheRateLimitTests(TestCase):
                 broken.incr.side_effect = RuntimeError("cache backend down")
                 with self.assertRaises(RateLimited):
                     enforce(self.user)
+class AISchoolBudgetTests(TestCase):
+    """WP5: per-school budgets enforced on AIRequestLog."""
+
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        self.school = School.objects.create(name="Budget School")
+        self.teacher = User.objects.create_user(
+            "budgetteacher", password=PASSWORD, role=User.Role.TEACHER, school=self.school
+        )
+
+    def test_request_budget_blocks_then_resolves(self):
+        from ai.budget import enforce_budget
+        from ai.models import AIRequestLog
+        from ai.ratelimit import RateLimited
+
+        def _log():
+            AIRequestLog.objects.create(provider="mock", model="m", kind="GENERATE", school=self.school)
+
+        _log()
+        with override_settings(AI_BUDGET_DAILY_REQUESTS=2):
+            enforce_budget(self.school)  # 1 usage < 2
+            _log()
+            with self.assertRaises(RateLimited):
+                enforce_budget(self.school)
+
+    def test_token_budget_blocked_by_usage_rows(self):
+        from ai.budget import enforce_budget
+        from ai.models import AIRequestLog
+        from ai.ratelimit import RateLimited
+
+        AIRequestLog.objects.create(
+            provider="mock", model="m", kind="GENERATE",
+            school=self.school, tokens_in=60, tokens_out=40,
+        )
+        with override_settings(AI_BUDGET_DAILY_TOKENS=50):
+            with self.assertRaises(RateLimited):
+                enforce_budget(self.school)
+
+    def test_budget_zero_means_unlimited(self):
+        from ai.budget import enforce_budget
+
+        for _ in range(3):
+            enforce_budget(self.school)

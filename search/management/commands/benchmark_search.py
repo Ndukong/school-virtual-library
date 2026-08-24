@@ -91,8 +91,11 @@ class Command(BaseCommand):
             fn()
             latencies.append(time.perf_counter() - start)
         latencies.sort()
-        index = lambda q: int(round((len(latencies) - 1) * q))
-        return latencies[index(0.50)], latencies[index(0.95)]
+
+        def percentile(quantile):
+            return latencies[int(round((len(latencies) - 1) * quantile))]
+
+        return percentile(0.50), percentile(0.95)
 
     def _teardown(self, resource, teacher, student, school, keep_school):
         resource.delete()

@@ -35,7 +35,6 @@ def pg_semantic_ranking_sql(chunk_ids, vector_param_placeholder="%s", limit=12):
     chunk_ids = list(chunk_ids)
     if not chunk_ids:
         raise ValueError("chunk_ids must not be empty")
-    placeholders = ", ".join([vector_param_placeholder] * (len(chunk_ids) + 2))
     sql = (
         f"SELECT ce.chunk_id, ce.embedding <-> {vector_param_placeholder} AS distance "
         f"FROM {PG_VECTOR_TABLE} ce "
@@ -65,7 +64,7 @@ def rank_chunks_pg(user, scope, query_vector, limit=None):
     )
     if not chunk_ids:
         return []
-    sql, param_count = pg_semantic_ranking_sql(chunk_ids, limit=limit)
+    sql, _ = pg_semantic_ranking_sql(chunk_ids, limit=limit)
     vector_text = "[" + ",".join(str(float(v)) for v in query_vector) + "]"
     # Placeholders: distance (1), id-list (N), limit (1).
     params = [vector_text, *chunk_ids, limit]
