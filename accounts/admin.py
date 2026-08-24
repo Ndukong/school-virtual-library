@@ -4,6 +4,7 @@ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from accounts.models import LoginFailure, LoginLock, PasswordReset, User
 from accounts.permissions import is_admin
 from accounts.services import reset_user_locks
+from common.audit import record as audit_record
 from students.admin import StudentInline
 from teachers.admin import TeacherInline
 
@@ -122,11 +123,63 @@ class UserAdmin(DjangoUserAdmin):
         return super().get_fieldsets(request, obj)
 
     def save_model(self, request, obj, form, change):
+        # Snapshot the previous state BEFORE the save so role/status changes
+        # are audited (governance trail, AGENTS section 6).
+        previous = User.objects.filter(pk=obj.pk).first() if change else None
+        before = {
+            field: getattr(previous, field) if previous else None
+            for field in ("role", "school_id", "is_active", "is_staff", "is_superuser", "must_change_password")
+        }
         if not request.user.is_superuser:
             obj.school = request.user.school
             obj.is_staff = False
             obj.is_superuser = False
         super().save_model(request, obj, form, change)
+
+        if not change:
+            audit_record(
+                actor=request.user,
+                action="user.admin_add",
+                target_type="User",
+                target_id=obj.username,
+                detail=f"role={obj.role} school={obj.school_id}",
+            )
+            return
+        changes = []
+        for field in ("role", "school_id", "is_active", "is_staff", "is_superuser", "must_change_password"):
+            value = getattr(obj, field)
+            if before[field] != value:
+                changes.append(f"{field}:{before[field]}->{value}")
+        if changes:
+            audit_record(
+                actor=request.user,
+                action="user.admin_change",
+                target_type="User",
+                target_id=obj.username,
+                detail="; ".join(changes),
+            )
+
+    def delete_model(self, request, obj):
+        audit_record(
+            actor=request.user,
+            action="user.admin_delete",
+            target_type="User",
+            target_id=obj.username,
+            detail=f"role={obj.role} school={obj.school_id}",
+        )
+        super().delete_model(request, obj)
+
+    def delete_queryset(self, request, queryset):
+        rows = list(queryset.values_list("username", "role", "school_id"))
+        super().delete_queryset(request, queryset)
+        for username, role, school_id in rows:
+            audit_record(
+                actor=request.user,
+                action="user.admin_delete",
+                target_type="User",
+                target_id=username,
+                detail=f"role={role} school={school_id}",
+            )
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         from schools.models import School

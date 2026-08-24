@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from accounts.permissions import is_admin
 from common.admin import SchoolScopedModelAdmin
+from common.audit import record as audit_record
 from library.models import BookChapter, BookSection, Resource
 
 
@@ -74,6 +75,30 @@ class ResourceAdmin(SchoolScopedModelAdmin):
     readonly_fields = ("public_id", "original_filename", "file_size", "created_at", "updated_at")
 
     inlines = [BookChapterInline]
+
+    def delete_model(self, request, obj):
+        audit_record(
+            actor=request.user,
+            action="resource.admin_delete",
+            target_type="Resource",
+            target_id=str(obj.public_id),
+            detail=f"{obj.title} (school: {obj.school})",
+        )
+        super().delete_model(request, obj)
+
+    def delete_queryset(self, request, queryset):
+        rows = list(
+            queryset.values_list("public_id", "title", "school_id")
+        )
+        super().delete_queryset(request, queryset)
+        for public_id, title, school_id in rows:
+            audit_record(
+                actor=request.user,
+                action="resource.admin_delete",
+                target_type="Resource",
+                target_id=str(public_id),
+                detail=f"{title} (school: {school_id})",
+            )
 
 
 @admin.register(BookChapter)

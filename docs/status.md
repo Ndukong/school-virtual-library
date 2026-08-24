@@ -203,6 +203,35 @@ and generated from scratch, makemigrations --check clean.
 Gate: ruff 97 (no new from WP8 files); check clean; 404 tests OK (3 skipped);
 check --deploy exit 0; pip-audit clean.
 
+## Work Package 9 - Safeguarding, privacy, governance (2026-08-24,
+branch wp/9-governance)
+
+- Governance audit trail (append-only): common.AuditEvent + common.audit.record
+  and a superuser-only read-only admin. Wired into privileged actions:
+  UserAdmin role/status changes, user adds, user deletes, and ResourceAdmin
+  deletions (AGENTS section 6). School admins can never view or edit the
+  trail.
+- Data retention (privacy): AI_RETENTION_DAYS (0 = disabled, the default) and
+  `purge_old_ai_data --days N [--dry-run]`, which deletes only AIInteraction /
+  AIGeneration rows older than the window. Budget/cost rows (AIRequestLog)
+  are deliberately kept so per-school quotas do not shrink when content is
+  forgotten. The command REFUSES to delete anything unless retention is
+  enabled or --days is explicit.
+- Data-subject export: `export_user_data <username> --out file.json` produces
+  a JSON snapshot of one user's AI history and practice attempts; it refuses
+  to overwrite an existing file and errors on unknown users.
+- Report anonymization guaranteed by test: teacher reports (practice/AI/
+  library/teachers) never contain student free-text answers or AI questions.
+  (Cross-user 404 for AI interactions/study results and practice attempts was
+  already enforced and tested; the owner-only AI-generation view test
+  predates this package.)
+
+Gate: ruff 97 (two RUF012 suppressions added on common.AuditEvent Meta with a
+rationale comment - Django 5.2's autodetector requires list form); check
+clean; 416 tests OK (3 skipped); check --deploy exit 0; pip-audit clean;
+migration common.0001 generated, applied from scratch, reversed and re-applied
+on the dev DB, makemigrations --check clean.
+
 ## Work Package 2 - production settings hardening (2026-08-23, branch
 wp/2-prod-settings)
 

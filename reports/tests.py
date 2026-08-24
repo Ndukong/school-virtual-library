@@ -319,7 +319,7 @@ class DownloadActivityTests(ReportTestBase):
             )
         ResourceAccessEvent.objects.create(
             resource=resource, user=self.teacher_a,
-            kind=ResourceAccessEvent.Kind.DOWNLOAD,
+kind=ResourceAccessEvent.Kind.DOWNLOAD,
         )
         result = download_activity(self.school_a)
         self.assertEqual(result["total"], 4)
@@ -328,3 +328,41 @@ class DownloadActivityTests(ReportTestBase):
         self.assertTrue(student_row["over_cap"])
         teacher_row = next(r for r in result["by_user"] if r["username"] == self.teacher_a.username)
         self.assertFalse(teacher_row["over_cap"])
+
+
+class ReportRedactionTests(ReportTestBase):
+    """WP9: staff reports are aggregate-only - no student free text leaks."""
+
+    def test_reports_never_expose_verbatim_student_answers(self):
+        from learning.models import AttemptResponse, PracticeAttempt
+
+        question = self.make_question(topic="Sensitive")
+        attempt = PracticeAttempt.objects.create(
+            student=self.student_a, school=self.school_a,
+            source_type=PracticeAttempt.Source.SELF_QUIZ,
+            possible_marks=question.marks,
+        )
+        AttemptResponse.objects.create(
+            attempt=attempt, question=question, position=1,
+            given_answer="SECRET FREE TEXT FROM STUDENT A",
+            is_correct=True, awarded_marks=question.marks,
+        )
+        AIInteraction.objects.create(
+            user=self.student_a, school=self.school_a,
+            question="secret tutor question",
+            answer="secret tutor answer",
+            used_provider=True,
+        )
+
+        client = Client()
+        client.force_login(self.teacher_a)
+        for page in ("reports-practice", "reports-ai", "reports-library", "reports-teachers"):
+            response = client.get(reverse(page))
+            self.assertEqual(response.status_code, 200)
+            raw = response.content.decode()
+            self.assertNotIn("SECRET FREE TEXT FROM STUDENT A", raw)
+            self.assertNotIn("secret tutor answer", raw)
+            self.assertNotIn("secret tutor question", raw)
+
+        redacted = client.get(reverse("reports-practice"))
+        self.assertNotIn("SECRET FREE TEXT FROM STUDENT A", redacted.content.decode())

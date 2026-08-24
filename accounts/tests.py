@@ -13,6 +13,7 @@ from accounts.services import (
     reset_password,
     reset_user_locks,
 )
+from common.models import AuditEvent
 from schools.models import School
 
 PASSWORD = "ComplexPass123!"
@@ -502,3 +503,157 @@ class BilingualUserTests(TestCase):
         self.assertContains(response, "Connexion")
         self.assertContains(response, "Nom d'utilisateur")
         self.assertContains(response, "Mot de passe")
+
+
+class GovernanceAuditTests(TestCase):
+    """WP9: privileged admin actions leave an append-only audit trail."""
+
+    def setUp(self):
+        self.school = make_school("Audit Academy")
+        self.superuser = make_user("root", User.Role.STUDENT, is_superuser=True)
+        self.school_admin = make_user("adm", User.Role.ADMIN, self.school, is_staff=True)
+        self.student = make_user("stuaudit", User.Role.STUDENT, self.school)
+
+    def test_role_change_is_audited_with_before_and_after(self):
+        admin_instance = default_admin_site._registry[User]
+        request = RequestFactory().get("/admin/accounts/user/1/change/")
+        request.user = self.superuser
+
+        changed = User.objects.get(pk=self.student.pk)
+        changed.role = User.Role.TEACHER
+        admin_instance.save_model(request, changed, None, change=True)
+
+        event = AuditEvent.objects.filter(
+            action="user.admin_change", target_id=self.student.username
+        ).first()
+        self.assertIsNotNone(event)
+        self.assertEqual(event.actor, self.superuser)
+        self.assertIn("role:STUDENT->TEACHER", event.detail)
+
+    def test_no_audit_event_when_nothing_changed(self):
+        admin_instance = default_admin_site._registry[User]
+        request = RequestFactory().get("/admin/accounts/user/1/change/")
+        request.user = self.superuser
+
+        unchanged = User.objects.get(pk=self.student.pk)
+        admin_instance.save_model(request, unchanged, None, change=True)
+        self.assertFalse(
+            AuditEvent.objects.filter(action="user.admin_change").exists()
+        )
+
+    def test_user_delete_is_audited(self):
+        admin_instance = default_admin_site._registry[User]
+        request = RequestFactory().post("/admin/accounts/user/")
+        request.user = self.superuser
+        admin_instance.delete_queryset(
+            request, User.objects.filter(pk=self.student.pk)
+        )
+        event = AuditEvent.objects.filter(
+            action="user.admin_delete", target_id=self.student.username
+        ).first()
+        self.assertIsNotNone(event)
+        self.assertFalse(User.objects.filter(pk=self.student.pk).exists())
+
+    def test_audit_admin_is_superuser_only_and_append_only(self):
+        audit_admin = default_admin_site._registry[AuditEvent]
+        from django.test import RequestFactory
+
+        superuser_request = RequestFactory().get("/admin/common/auditevent/")
+        superuser_request.user = self.superuser
+        admin_request = RequestFactory().get("/admin/common/auditevent/")
+        admin_request.user = self.school_admin
+
+        self.assertTrue(audit_admin.has_view_permission(superuser_request))
+        self.assertFalse(audit_admin.has_view_permission(admin_request))
+        self.assertFalse(audit_admin.has_add_permission(superuser_request))
+        self.assertFalse(audit_admin.has_change_permission(superuser_request))
+        self.assertFalse(audit_admin.has_delete_permission(superuser_request))
+
+
+class DataSubjectExportTests(TestCase):
+    """WP9: `export_user_data` produces one user's own data, nothing else."""
+
+    def setUp(self):
+        self.school = make_school("Export Academy")
+        self.student_a = make_user("expa", User.Role.STUDENT, self.school)
+        self.student_b = make_user("expb", User.Role.STUDENT, self.school)
+        from ai.models import AIGeneration, AIInteraction
+        from learning.models import AttemptResponse, PracticeAttempt
+        from question_bank.models import Question
+        from subjects.models import Subject
+
+        self.interaction_a = AIInteraction.objects.create(
+            user=self.student_a, school=self.school,
+            question="SECRET QUESTION A", answer="SECRET ANSWER A",
+            used_provider=True,
+        )
+        AIInteraction.objects.create(
+            user=self.student_b, school=self.school,
+            question="SECRET QUESTION B", answer="SECRET ANSWER B", used_provider=True,
+        )
+        AIGeneration.objects.create(
+            user=self.student_a, school=self.school, kind="SUMMARY",
+            scope="LIBRARY", content="SECRET NOTES A", used_provider=True,
+        )
+        physics = Subject.objects.create(school=self.school, name="Physics")
+        question = Question.objects.create(
+            school=self.school, subject=physics, body="Body placeholder",
+            correct_answer="X", question_type=Question.QuestionType.SHORT_STRUCTURED,
+            marks=2, author=self.student_a,
+        )
+        attempt = PracticeAttempt.objects.create(
+            student=self.student_a, school=self.school,
+            source_type=PracticeAttempt.Source.SELF_QUIZ,
+            topic_filter="", possible_marks=2,
+        )
+        AttemptResponse.objects.create(
+            attempt=attempt, question=question, position=1,
+            given_answer="MY GIVEN ANSWER A",
+        )
+
+    def test_export_contains_only_the_subject_user_data(self):
+        import json
+        import tempfile
+        from pathlib import Path
+
+        from django.core.management import call_command
+
+        out = Path(tempfile.gettempdir()) / f"svl_export_{self.student_a.pk}_{self.student_a.username}.json"
+        if out.exists():
+            out.unlink()
+        call_command("export_user_data", self.student_a.username, "--out", str(out))
+        payload = json.loads(out.read_text(encoding="utf-8"))
+        out.unlink()
+
+        self.assertEqual(payload["user"]["username"], "expa")
+        self.assertEqual(payload["school"], "Export Academy")
+        self.assertEqual(len(payload["ai_interactions"]), 1)
+        self.assertEqual(payload["ai_interactions"][0]["question"], "SECRET QUESTION A")
+        self.assertEqual(payload["ai_generations"][0]["content"], "SECRET NOTES A")
+        self.assertEqual(
+            payload["practice_attempts"][0]["responses"][0]["given_answer"],
+            "MY GIVEN ANSWER A",
+        )
+        dump = json.dumps(payload, ensure_ascii=False)
+        self.assertNotIn("SECRET QUESTION B", dump)
+        self.assertNotIn("SECRET ANSWER B", dump)
+
+    def test_export_refuses_missing_user_and_overwrite(self):
+        import tempfile
+        from pathlib import Path
+
+        from django.core.management.base import CommandError
+
+        missing = Path(tempfile.gettempdir()) / "svl_export_missing.json"
+        if missing.exists():
+            missing.unlink()
+        with self.assertRaises(CommandError):
+            call_command("export_user_data", "ghost", "--out", str(missing))
+
+        out = Path(tempfile.gettempdir()) / f"svl_export_static_{self.student_a.username}.json"
+        out.write_text("{}", encoding="utf-8")
+        try:
+            with self.assertRaises(CommandError):
+                call_command("export_user_data", self.student_a.username, "--out", str(out))
+        finally:
+            out.unlink()

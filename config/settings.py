@@ -336,6 +336,11 @@ AI_BUDGET_MONTHLY_REQUESTS = int(os.getenv("AI_BUDGET_MONTHLY_REQUESTS", "0"))
 AI_BUDGET_DAILY_TOKENS = int(os.getenv("AI_BUDGET_DAILY_TOKENS", "0"))
 AI_BUDGET_MONTHLY_TOKENS = int(os.getenv("AI_BUDGET_MONTHLY_TOKENS", "0"))
 
+# AI history retention (WP9): 0 disables automatic deletion. When set, the
+# `purge_old_ai_data` command deletes AIInteraction/AIGeneration rows older
+# than this window. Budget rows (AIRequestLog) are never purged.
+AI_RETENTION_DAYS = int(os.getenv("AI_RETENTION_DAYS", "0"))
+
 # Per-resource chunk cap and per-school storage quota (WP5).
 DOCUMENTS_MAX_CHUNKS = int(os.getenv("DOCUMENTS_MAX_CHUNKS", "1000"))
 SCHOOL_STORAGE_QUOTA_MB = int(os.getenv("SCHOOL_STORAGE_QUOTA_MB", "5000"))

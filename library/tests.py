@@ -584,3 +584,29 @@ class OfflineReadingPanelTests(LibraryTestBase):
         self.assertEqual(
             self.client.get(resource.get_absolute_url()).status_code, 404
         )
+
+
+class GovernanceResourceDeleteAuditTests(LibraryTestBase):
+    """WP9: resource deletion by an administrator is captured in the trail."""
+
+    def test_admin_resource_delete_is_audited(self):
+        from django.contrib.admin import site as default_admin_site
+        from django.test import RequestFactory
+
+        from common.models import AuditEvent
+
+        superuser = User.objects.create_user(
+            "govroot", password=PASSWORD, is_superuser=True
+        )
+        resource = self.make_resource(title="Doomed Doc")
+        admin_instance = default_admin_site._registry[Resource]
+
+        request = RequestFactory().post("/admin/library/resource/")
+        request.user = superuser
+        admin_instance.delete_queryset(request, Resource.objects.filter(pk=resource.pk))
+
+        event = AuditEvent.objects.filter(action="resource.admin_delete").first()
+        self.assertIsNotNone(event)
+        self.assertEqual(event.target_id, str(resource.public_id))
+        self.assertIn("Doomed Doc", event.detail)
+        self.assertFalse(Resource.objects.filter(pk=resource.pk).exists())
