@@ -85,6 +85,37 @@ clean; check --deploy exit 0; 345 tests OK (3 skipped); pip-audit clean.
 Gate: ruff 90 (WP4 files zero new); check clean; 352 tests OK (3 skipped);
 check --deploy exit 0; pip-audit clean.
 
+## Work Package 5 - search performance and cost (2026-08-23, branch wp/5-search)
+
+- Keyword recall: the arbitrary id-ordered [:500] slice is gone; keyword
+  ranking considers every permission-filtered match (regression test with
+  520 filler chunks + a late match).
+- pgvector path behind one interface (search/backends): ORDER BY embedding
+  <-> distance over the permission-filtered id set on PostgreSQL, HNSW
+  index; conditional migration (no-op outside PG) + `backfill_pg_vectors`
+  command copies JSON ChunkEmbedding vectors into the vector column. SQLite
+  keeps the Python-cosine fallback only.
+- Local embeddings: fastembed (multilingual-e5-small) provider registered as
+  'local', recommended for a school box with no cloud spend; remote providers
+  stay selectable. No API key required.
+- Caches: per-model query-embedding cache; RAG answers cached per (school,
+  scope, prompt version, chat model, normalized question, school resource
+  version) with RAG_USE_CACHE/RAG_CACHE_TTL; any resource change invalidates.
+  Cache hits still audit to AIInteraction (used_provider=False).
+- Budgets/quota: per-school daily/monthly request+token budgets counted on
+  AIRequestLog (local-time windows; BudgetExceeded is RateLimited so views/
+  WhatsApp render friendly messages), SCHOOL_STORAGE_QUOTA_MB at upload, and
+  DOCUMENTS_MAX_CHUNKS cap with WARNING.
+- `manage.py benchmark_search` reports p50/p95 for keyword/semantic/hybrid on
+  a seeded corpus.
+
+Gate: ruff 92 (86 baseline + pre-existing RUF012/F811/B905; every WP5 file is
+zero); check clean; 367 tests OK (3 skipped); check --deploy exit 0;
+pip-audit clean.
+
+DEPLOYMENT NOTE (live OCR): tesseract/ghostscript not on this box; WP4 live
+OCR path remains verified via the fake engine until binaries are installed.
+
 ## Work Package 2 - production settings hardening (2026-08-23, branch
 wp/2-prod-settings)
 
@@ -170,7 +201,7 @@ Baseline gate (2026-08-23): ruff 156->86 remaining (71 autofixed in `style: appl
 
 ## Not started
 
-French/i18n · offline PWA caching · pgvector · DRF API · RAG eval · backups &
+French/i18n · offline PWA caching · DRF API · RAG eval · backups &
 deployment
 
 ## Update rule
