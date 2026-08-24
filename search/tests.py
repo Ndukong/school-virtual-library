@@ -288,3 +288,28 @@ class SearchViewTests(SearchTestBase):
         client.force_login(self.student_a)
         response = client.get(reverse("search"), {"q": "qqqqzzzz"})
         self.assertContains(response, "No results")
+
+
+class KeywordRecallTests(SearchTestBase):
+    """Regression: keyword search must not slice by row order (AGENTS #3)."""
+
+    @override_settings(SEARCH_KEYWORD_TOP_K=12)
+    def test_match_beyond_500_rows_is_still_found(self):
+        from documents.models import DocumentChunk
+
+        resource = self.make_processed_resource(
+            ("filler",), title="Many chunks", embed=False
+        )
+        # Fill rows so the interesting match would previously sit beyond the
+        # arbitrary id-ordered [:500] slice.
+        DocumentChunk.objects.bulk_create([
+            DocumentChunk(resource=resource, sequence=i, text="unrelated filler text")
+            for i in range(2, 522)
+        ])
+        target = self.make_processed_resource(
+            ("unique needle phrase that only appears here.",),
+            title="Needle doc",
+        )
+
+        results = keyword_search(self.student_a, "unique needle phrase")
+        self.assertTrue(any(r.chunk.resource_id == target.pk for r in results))

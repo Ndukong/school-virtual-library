@@ -60,14 +60,20 @@ def _terms(query):
 
 
 def keyword_search(user, query, scope=None, limit=None):
-    """Rank chunks by simple term coverage against the visible candidate set."""
+    """Rank chunks by simple term coverage against the visible candidate set.
+
+    Every matching chunk in the permission-filtered candidate set is
+    considered - no early slice over cursor order, which previously dropped
+    matches that lived in later resources (AGENTS "do not reintroduce" #3).
+    Ranking then happens over the complete candidate list.
+    """
     limit = limit or getattr(settings, "SEARCH_KEYWORD_TOP_K", 12)
     terms = _terms(query)
     if not terms:
         return []
     candidates = _candidate_chunks(user, scope).filter(
         reduce_or([Q(text__icontains=t) for t in terms])
-    )[:500]
+    )
     scored = []
     lowered_query = query.strip().lower()
     for chunk in candidates:
